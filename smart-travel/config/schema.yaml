@@ -1,0 +1,181 @@
+# config/schema.yaml
+
+# ============================================================
+# POI 字段规范
+# ============================================================
+# stage: 字段在哪个阶段产生
+#   crawl   - 高德 API 直接返回
+#   clean   - 清洗阶段补全
+#   tag     - LLM 打标签产生
+#   build   - 构建知识库时派生
+# usage: 字段用途
+#   filter  - 用于 metadata 过滤（不进 embedding）
+#   embed   - 拼进向量化文本
+#   display - 仅用于前端展示
+#   system  - 系统字段，不参与业务
+# ============================================================
+
+poi:
+  # ---------- 基础字段（crawl 阶段） ----------
+  id:
+    type: string
+    required: true
+    stage: crawl
+    usage: system
+    desc: 高德 POI ID，全局唯一
+
+  name:
+    type: string
+    required: true
+    stage: crawl
+    usage: embed
+    desc: 景点名称
+
+  city:
+    type: string
+    required: true
+    stage: crawl
+    usage: filter
+    desc: 城市名，如"武汉"
+
+  district:
+    type: string
+    required: true
+    stage: clean
+    usage: filter
+    desc: 区县名，如"武昌区"，从 address 解析或匹配 districts 列表
+
+  address:
+    type: string
+    required: false
+    stage: crawl
+    usage: embed
+    desc: 详细地址
+
+  location:
+    type: string
+    required: true
+    stage: crawl
+    usage: system
+    desc: "经度,纬度"
+
+  type:
+    type: string
+    required: false
+    stage: crawl
+    usage: embed
+    desc: 高德类型标签，如"风景名胜;旅游景点"
+
+  # ---------- 业务字段（crawl 阶段） ----------
+  rating:
+    type: string
+    required: false
+    stage: crawl
+    usage: filter
+    desc: 用户评分，"暂无"表示没有
+
+  opentime:
+    type: string
+    required: false
+    stage: crawl
+    usage: embed
+    desc: 营业时间
+
+  photos:
+    type: list[string]
+    required: false
+    stage: crawl
+    usage: display
+    desc: 图片 URL 列表
+
+  # ---------- 标签字段（tag 阶段） ----------
+  tags:
+    type: string
+    required: true
+    stage: tag
+    usage: filter
+    desc: 兴趣标签，逗号分隔，取自固定词表
+
+  crowd:
+    type: string
+    required: false
+    stage: tag
+    usage: filter
+    desc: 适合人群，逗号分隔，取自固定词表
+
+  highlight:
+    type: string
+    required: false
+    stage: tag
+    usage: embed
+    desc: 一句话亮点，不超过 30 字
+
+  # ---------- 派生字段（build 阶段） ----------
+  text:
+    type: string
+    required: true
+    stage: build
+    usage: embed
+    desc: 由上述字段拼装的向量化文本，不单独存储
+
+  # ---------- 系统字段 ----------
+  source:
+    type: string
+    required: true
+    stage: crawl
+    usage: system
+    default: amap
+    desc: 数据来源
+
+  crawled_at:
+    type: string
+    required: true
+    stage: crawl
+    usage: system
+    desc: 抓取时间，ISO 格式
+
+  interest_group:
+    type: string
+    required: false
+    stage: crawl
+    usage: system
+    desc: 来源兴趣分组，如"历史人文"，来自 cities.yaml 的 core_spots
+
+# ============================================================
+# 固定词表
+# ============================================================
+
+interest_tags:
+  - 历史人文
+  - 自然风光
+  - 美食探店
+  - 购物休闲
+  - 夜生活
+
+crowd_tags:
+  - 独行
+  - 情侣
+  - 家庭
+  - 朋友
+  - 历史爱好者
+  - 摄影爱好者
+  - 亲子
+  - 文艺青年
+
+# ============================================================
+# 向量化文本模板
+# ============================================================
+# build 阶段按这个模板拼 text
+# 只包含 usage=embed 的字段
+# ============================================================
+
+text_template: |
+  【景点名称】{name}
+  【所在城市】{city} · {district}
+  【类别】{category}
+  【地址】{address}
+  【评分】{rating}
+  【开放时间】{opentime}
+  【兴趣标签】{tags}
+  【适合人群】{crowd}
+  【亮点】{highlight}
