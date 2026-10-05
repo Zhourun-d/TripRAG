@@ -63,14 +63,16 @@ PLAN_CONFIG = {
         "w_random": 0.15,
         "w_core": 0.3,
         "w_behavior": 0.3,
+        "w_level": 0.0,
         "target_count": 5,
     },
     "口碑": {
-        "w_rating": 0.3,
+        "w_rating": 0.25,
         "w_interest": 0.05,
         "w_random": 0.1,
-        "w_core": 0.35,
-        "w_behavior": 0.2,
+        "w_core": 0.3,
+        "w_behavior": 0.15,
+        "w_level": 0.15,
         "target_count": 5,
     },
     "悠闲": {
@@ -79,6 +81,7 @@ PLAN_CONFIG = {
         "w_random": 0.25,
         "w_core": 0.25,
         "w_behavior": 0.3,
+        "w_level": 0.0,
         "target_count": 4,
     },
 }
@@ -215,6 +218,21 @@ def _behavior_norm(poi: dict, companion: str, crowd_to_tags: dict) -> float:
     return min(score / max_w, 1.0)
 
 
+# 景区等级加成：5A / 4A 满分，其余（含 3A）不计
+LEVEL_SCORE = {"5A": 1.0, "4A": 1.0}
+
+
+def _level_norm(poi: dict) -> float:
+    """
+    景区等级归一化。
+
+    5A / 4A 得满分 1.0，3A 及其它不计 0.0。
+    说明：口碑里 5A 是「必选」（不参与随机），所以 w_level 实际主要给 4A 加成；
+    3A 按用户要求丢弃（3A 景点太普遍，没有区分度）。
+    """
+    return LEVEL_SCORE.get(str(poi.get("level", "") or ""), 0.0)
+
+
 def _base_score(
     poi: dict,
     interests: list,
@@ -224,13 +242,14 @@ def _base_score(
     crowd_to_tags: dict,
     rng: random.Random,
 ) -> float:
-    """基础分 = 5 项加权和。"""
+    """基础分 = 6 项加权和。"""
     return (
         cfg["w_rating"] * _rating_norm(poi)
         + cfg["w_interest"] * _interest_match(poi, interests)
         + cfg["w_random"] * rng.random()
         + cfg["w_core"] * (1.0 if is_core_spot(poi.get("name", ""), core_spots_flat) else 0.0)
         + cfg["w_behavior"] * _behavior_norm(poi, companion, crowd_to_tags)
+        + cfg.get("w_level", 0.0) * _level_norm(poi)
     )
 
 
@@ -330,12 +349,16 @@ def pick(
     start_lat: float,
     start_lng: float,
     seed: int = None,
+    day_index: int = 0,
     debug_info: list = None,
 ) -> list:
     """
     从一天的候选里挑 N 个点。
 
     debug_info 不为 None 时，会往里面 append 一条打分详情，供外部打印。
+
+    seed 按 (plan_type, day_index) 偏移，避免三套方案/多天共用同一条随机流
+    （否则「悠闲」会退化成「综合」砍掉一个点）。
     """
     if plan_type not in PLAN_CONFIG:
         logger.warning(f"未知 plan_type：{plan_type}，退回「综合」")
@@ -351,7 +374,11 @@ def pick(
     core_spots_flat = load_core_spots(city_key)
     crowd_to_tags = get_crowd_to_tags()
 
-    rng = random.Random(seed) if seed is not None else random.Random()
+    # seed 按「方案 + 天」偏移，消除同源随机
+    if seed is None:
+        rng = random.Random()
+    else:
+        rng = random.Random(f"{seed}|{plan_type}|{day_index}")
 
     # ---- 1. 算每个候选的基础分 ----
     candidates = list(day_pois)
@@ -360,12 +387,26 @@ def pick(
         for p in candidates
     ]
 
-    # ---- 2. 逐个挑 ----
     picked = []
     picked_idx = set()
     rounds_log = []
 
-    for round_i in range(target):
+    # ---- 2. 口碑：5A 必选，不参与随机 ----
+    if plan_type == "口碑":
+        five = [i for i, p in enumerate(candidates) if p.get("level") == "5A"]
+        if len(five) > target:
+            five = sorted(five, key=lambda i: -_rating_norm(candidates[i]))[:target]
+        for i in five:
+            picked.append(candidates[i])
+            picked_idx.add(i)
+        if five:
+            logger.info(
+                f"[口碑] 锁定 5A（{len(five)} 个）："
+                f"{[candidates[i]['name'] for i in five]}"
+            )
+
+    # ---- 3. 剩余槽位逐个挑 ----
+    for round_i in range(target - len(picked)):
         weights = []
         for i, p in enumerate(candidates):
             if i in picked_idx:
@@ -399,7 +440,7 @@ def pick(
             "top5": top5,
         })
 
-    # ---- 3. 按地理排序 ----
+    # ---- 4. 按地理排序 ----
     ordered = _sort_by_geo(picked, start_lat, start_lng)
 
     logger.info(
@@ -443,7 +484,7 @@ def _print_debug(day: str, info: dict):
 
     sorted_cands = sorted(info["candidates"], key=lambda x: -x["base"])
     for c in sorted_cands:
-        marker = "✅" if c["picked"] else ""
+        marker = "√" if c["picked"] else ""
         print(f"{c['name'][:22]:<24} {c['base']:>7.4f} {c['rating_norm']:>7.3f} "
               f"{c['interest_match']:>9.3f} {c['behavior_norm']:>9.3f} "
               f"{str(c['is_core']):>6} {marker:>5}")
@@ -605,6 +646,7 @@ def main():
             start_lat=stay_lat,
             start_lng=stay_lng,
             seed=args.seed,
+            day_index=day_idx,
             debug_info=debug_info,
         )
 

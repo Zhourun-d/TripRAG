@@ -1,0 +1,31 @@
+# 数据抓取
+requests==2.34.2
+
+# 配置
+PyYAML==6.0.3
+python-dotenv==1.2.3
+
+# 大模型（OpenAI 兼容接口）
+openai==2.44.0
+
+# Embedding
+dashscope==1.27.5
+
+# 向量库（LangChain 封装）
+langchain==1.4.1
+langchain-core==1.6.3
+langchain-community==0.4.2
+langchain-chroma==1.1.0
+chromadb==1.5.9
+
+# 关键词检索
+rank-bm25==0.2.2
+jieba==0.42.1
+
+# 数值计算与聚类
+numpy==2.5.3
+scikit-learn==1.9.1
+
+# 前端与地图
+streamlit==1.64.0
+folium==0.20.0

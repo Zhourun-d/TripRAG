@@ -1,71 +1,147 @@
 {
   "city": "wuhan",
   "city_name": "武汉",
-  "version": "v2",
-  "description": "纯语义检索评估集。不测附近、不测多意图，只测'给定一句语义 query，能否召回对的景点'。",
+  "version": "v3",
+  "description": "按前端表单场景组织的检索评估集。每条用例 = 一次典型的表单填写（风格/兴趣/同行人/天数/住宿区）；query 不手写，由 interests 按产品规则自动拼成「城市 + 兴趣词 + 旅游 景点」，和生成流程实际发出的 query 完全一致。评估的是「按用户所选兴趣，候选池能否召回对应景点」。",
   "cases": [
     {
-      "id": "wuhan_hist_001",
-      "query": "武汉有哪些历史人文景点",
-      "type": "interest",
+      "id": "scene_hist_2d_wuchang",
+      "profile": {
+        "style": "综合",
+        "interests": ["历史人文"],
+        "companion": "情侣",
+        "days": 2,
+        "stay_district": "武昌区"
+      },
+      "type": "single",
       "difficulty": "easy",
-      "expected_names": ["黄鹤楼", "湖北省博物馆", "辛亥革命博物院", "晴川阁"],
+      "expected_names": ["黄鹤楼", "湖北省博物馆", "辛亥革命博物院", "晴川阁", "江汉关"],
+      "must_not_include": ["停车场", "地铁站", "售票处", "游客中心"]
+    },
+    {
+      "id": "scene_nature_3d_wuchang",
+      "profile": {
+        "style": "综合",
+        "interests": ["自然风光"],
+        "companion": "家庭",
+        "days": 3,
+        "stay_district": "武昌区"
+      },
+      "type": "single",
+      "difficulty": "easy",
+      "expected_names": ["东湖", "磨山", "武汉大学", "龟山", "沙湖公园"],
+      "must_not_include": ["停车场", "地铁站", "售票处"]
+    },
+    {
+      "id": "scene_food_1d_jianghan",
+      "profile": {
+        "style": "综合",
+        "interests": ["美食探店"],
+        "companion": "朋友",
+        "days": 1,
+        "stay_district": "江汉区"
+      },
+      "type": "single",
+      "difficulty": "easy",
+      "expected_names": ["户部巷", "吉庆街", "粮道街", "万松园"],
       "must_not_include": []
     },
     {
-      "id": "wuhan_nature_001",
-      "query": "武汉自然风光推荐",
-      "type": "interest",
+      "id": "scene_shop_2d_jiangan",
+      "profile": {
+        "style": "口碑",
+        "interests": ["购物休闲"],
+        "companion": "情侣",
+        "days": 2,
+        "stay_district": "江岸区"
+      },
+      "type": "single",
       "difficulty": "easy",
-      "expected_names": ["东湖", "磨山", "沙湖公园", "解放公园"],
+      "expected_names": ["楚河汉街", "江汉路", "光谷步行街", "武汉新天地"],
       "must_not_include": []
     },
     {
-      "id": "wuhan_food_001",
-      "query": "武汉小吃街哪里好",
-      "type": "interest",
-      "difficulty": "easy",
-      "expected_names": ["户部巷", "粮道街", "吉庆街", "万松园"],
-      "must_not_include": []
-    },
-    {
-      "id": "wuhan_night_001",
-      "query": "武汉晚上有什么好玩的",
-      "type": "interest",
+      "id": "scene_night_2d_jianghan",
+      "profile": {
+        "style": "悠闲",
+        "interests": ["夜生活"],
+        "companion": "情侣",
+        "days": 2,
+        "stay_district": "江汉区"
+      },
+      "type": "single",
       "difficulty": "medium",
-      "expected_names": ["汉口江滩", "武昌江滩", "长江夜游", "楚河汉街"],
+      "expected_names": ["汉口江滩", "武昌江滩", "楚河汉街", "江汉路"],
       "must_not_include": []
     },
     {
-      "id": "wuhan_culture_001",
-      "query": "武汉适合了解近代史的地方",
-      "type": "interest",
+      "id": "scene_hist_food_3d_wuchang",
+      "profile": {
+        "style": "综合",
+        "interests": ["历史人文", "美食探店"],
+        "companion": "朋友",
+        "days": 3,
+        "stay_district": "武昌区"
+      },
+      "type": "combined",
       "difficulty": "hard",
-      "expected_names": ["辛亥革命博物院", "江汉关博物馆", "黎黄陂路", "昙华林"],
+      "expected_names": ["黄鹤楼", "昙华林", "户部巷", "粮道街", "吉庆街"],
       "must_not_include": []
     },
     {
-      "id": "wuhan_family_001",
-      "query": "带小孩去武汉适合去哪",
-      "type": "interest",
+      "id": "scene_nature_shop_2d_hanyang",
+      "profile": {
+        "style": "口碑",
+        "interests": ["自然风光", "购物休闲"],
+        "companion": "情侣",
+        "days": 2,
+        "stay_district": "汉阳区"
+      },
+      "type": "combined",
       "difficulty": "hard",
-      "expected_names": ["武汉动物园", "武汉欢乐谷", "极地海洋度假区", "武汉园博园"],
+      "expected_names": ["东湖", "磨山", "武汉大学", "楚河汉街", "江汉路"],
       "must_not_include": []
     },
     {
-      "id": "wuhan_temple_001",
-      "query": "武汉有哪些寺庙",
-      "type": "interest",
+      "id": "scene_hist_nature_4d_wuchang",
+      "profile": {
+        "style": "综合",
+        "interests": ["历史人文", "自然风光"],
+        "companion": "情侣",
+        "days": 4,
+        "stay_district": "武昌区"
+      },
+      "type": "combined",
+      "difficulty": "hard",
+      "expected_names": ["黄鹤楼", "湖北省博物馆", "东湖", "磨山", "晴川阁"],
+      "must_not_include": []
+    },
+    {
+      "id": "scene_all_4d_wuchang",
+      "profile": {
+        "style": "悠闲",
+        "interests": ["历史人文", "自然风光", "美食探店", "购物休闲"],
+        "companion": "家庭",
+        "days": 4,
+        "stay_district": "武昌区"
+      },
+      "type": "combined",
+      "difficulty": "hard",
+      "expected_names": ["黄鹤楼", "东湖", "户部巷", "楚河汉街", "昙华林"],
+      "must_not_include": []
+    },
+    {
+      "id": "scene_hist_3d_hanyang",
+      "profile": {
+        "style": "口碑",
+        "interests": ["历史人文"],
+        "companion": "亲子",
+        "days": 3,
+        "stay_district": "汉阳区"
+      },
+      "type": "single",
       "difficulty": "easy",
-      "expected_names": ["归元禅寺", "宝通禅寺", "古德寺", "长春观"],
-      "must_not_include": []
-    },
-    {
-      "id": "wuhan_photo_001",
-      "query": "武汉适合拍照打卡的地方",
-      "type": "interest",
-      "difficulty": "hard",
-      "expected_names": ["昙华林", "黎黄陂路", "凌波门", "黄鹤楼红墙"],
+      "expected_names": ["黄鹤楼", "晴川阁", "归元禅寺", "湖北省博物馆", "辛亥革命博物院"],
       "must_not_include": []
     }
   ]

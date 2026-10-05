@@ -20,7 +20,7 @@
 并带 _cluster_id（属于哪个小簇），供片内选点参考。
 
 核心流程（v4 定案）：
-    1. 严格去重 + 过滤无效坐标
+    1. 过滤无效坐标（同名收敛已在 build 阶段完成）
     2. 切小簇：KMeans 聚 k 簇，每簇超 max_size 递归拆，
        每簇内两点最远超 max_dist 再拆
     3. 单点吸收：城区单点簇吸进离它最近的城区多簇
@@ -110,89 +110,19 @@ def _poi_to_dict(r: SearchResult, cluster_id: int) -> dict:
     return {
         "poi_id": r.id,
         "name": r.name,
+        "display_name": r.display_name,
         "tags": r.tags,
         "behaviors": r.behaviors,
+        "level": r.level,
+        "aliases": r.aliases,
+        "photos": r.photos,
+        "description": r.description,
         "lat": r.lat,
         "lng": r.lng,
         "rating": r.rating,
         "district": r.district,
         "_cluster_id": cluster_id,
     }
-
-
-# ============================================================
-# 1. 严格去重
-# ============================================================
-def strict_dedupe(results: list[SearchResult]) -> list[SearchResult]:
-    """
-    包含关系去重：子串关系合并，只留最短（最准）的那条。
-
-    规则：
-        - 先按名字长度升序排（短的在前）
-        - 完全相同 → 留 rating 高的
-        - 新的是已保留的子串（新的更短）→ 用新的替换
-        - 已保留的是新的子串（已保留的更短）→ 丢弃新的
-
-    例子：
-        "黄鹤楼" / "黄鹤楼公园"     → 留 "黄鹤楼"
-        "晴川阁" / "晴川阁-禹稷行宫" → 留 "晴川阁"
-        "江汉路步行街" / "江汉路步行街" → 留 rating 高的
-
-    注意：
-        检索层 retriever.py 的 dedupe_by_containment 用前 3 字，
-        那是故意的——检索结果允许同一主景点留 2 条，
-        方便展示。但空间排序是最终行程，不该有重复感。
-    """
-    sorted_results = sorted(results, key=lambda r: len(r.name))
-    kept: list[SearchResult] = []
-
-    for r in sorted_results:
-        name = r.name
-        if not name:
-            kept.append(r)
-            continue
-
-        conflict = False
-        i = 0
-        while i < len(kept):
-            k = kept[i]
-            k_name = k.name
-
-            if not k_name:
-                i += 1
-                continue
-
-            if name == k_name:
-                # 完全相同，留 rating 高的
-                if r.rating > k.rating:
-                    kept.pop(i)
-                    kept.append(r)
-                conflict = True
-                break
-
-            if name in k_name:
-                # r 是 k 的子串（r 更短、更准）→ 替换 k
-                kept.pop(i)
-                kept.append(r)
-                conflict = True
-                break
-
-            if k_name in name:
-                # k 是 r 的子串（k 更短、更准）→ 丢弃 r
-                conflict = True
-                break
-
-            i += 1
-
-        if not conflict:
-            kept.append(r)
-
-    deduped = kept
-
-    if len(deduped) < len(results):
-        logger.info(f"包含关系去重：{len(results)} → {len(deduped)}")
-
-    return deduped
 
 
 # ============================================================
@@ -603,11 +533,12 @@ def spatial_sort(
     cfg = get_spatial_config(city_key)
     urban_districts = set(cfg["urban_districts"])
 
-    # ---- 1. 严格去重 + 过滤无效坐标 ----
-    deduped = strict_dedupe(results)
-    valid = [r for r in deduped if r.has_valid_coord]
-    if len(valid) < len(deduped):
-        logger.info(f"过滤无效坐标：{len(deduped)} → {len(valid)}")
+    # ---- 1. 过滤无效坐标 ----
+    # 同名/同主景点的收敛已在 build 阶段完成，这里不再去重，
+    # 否则会把「铁佛寺 / 杨正古铁佛寺」这类人工拆分重新合并掉。
+    valid = [r for r in results if r.has_valid_coord]
+    if len(valid) < len(results):
+        logger.info(f"过滤无效坐标：{len(results)} → {len(valid)}")
 
     if not valid:
         logger.error("没有有效坐标的候选，无法空间排序")

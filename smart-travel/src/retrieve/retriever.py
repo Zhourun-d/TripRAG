@@ -5,7 +5,7 @@
 1. 加载 Chroma 向量库 + BM25 索引
 2. 提供 search() 接口：支持 vector / bm25 / hybrid 三种模式
 3. 返回带 score 和 rank 的结果
-4. 对结果做"同名去重"：同一个主景点最多出现 2 条
+4. 直接按 score 截断 top_k（同名收敛已在 build 阶段完成）
 
 设计要点：
 - 只负责"检索"，不负责"生成"
@@ -21,6 +21,7 @@ Chroma 过滤语法备忘：
 """
 
 import argparse
+import json
 import pickle
 from dataclasses import dataclass
 from pathlib import Path
@@ -117,6 +118,43 @@ class SearchResult:
         return str(raw)
 
     @property
+    def aliases(self) -> list:
+        """
+        同主景点变体名列表（build 阶段归组时写入）。
+        如 ["户部巷风情街", "户部巷小吃一条街"]；无则空列表。
+        """
+        raw = self.document.metadata.get("aliases", [])
+        return raw if isinstance(raw, list) else []
+
+    @property
+    def level(self) -> str:
+        """清洗后的景区等级：5A / 4A / 3A，无则空串。"""
+        return str(self.document.metadata.get("level", "") or "")
+
+    @property
+    def photos(self) -> list:
+        """图片 URL 列表（metadata 里存的是 JSON 字符串）。"""
+        raw = self.document.metadata.get("photos", "")
+        if isinstance(raw, list):
+            return raw
+        try:
+            v = json.loads(raw) if raw else []
+            return v if isinstance(v, list) else []
+        except (json.JSONDecodeError, TypeError):
+            return []
+
+    @property
+    def description(self) -> str:
+        """一句话描述。"""
+        return str(self.document.metadata.get("description", "") or "")
+
+    @property
+    def display_name(self) -> str:
+        """清洗后的展示名（去掉括号后缀），无则回退 name。"""
+        raw = self.document.metadata.get("display_name", "")
+        return str(raw) if raw else self.name
+
+    @property
     def rating(self) -> float:
         """评分，float。-1.0 表示无评分。"""
         raw = self.document.metadata.get("rating", -1.0)
@@ -191,52 +229,6 @@ def strip_city_from_query(query: str, city: Optional[str]) -> str:
         return query
 
     return stripped
-
-
-# ============================================================
-# 同名去重
-# ============================================================
-def dedupe_by_containment(results: list, max_per_group: int = 2, top_k: int = 10) -> list:
-    """
-    同名去重：按名字前 3 个字分组，每组最多保留 max_per_group 条。
-
-    例子：
-      "黄鹤楼" / "黄鹤楼红墙" / "黄鹤楼公园" → 前 3 字都是 "黄鹤楼" → 同组
-      "晴川阁" → 前 3 字是 "晴川阁" → 独立组
-
-    为什么用前 3 字：
-      - "包含关系"方案有个 bug：黄鹤楼红墙 和 黄鹤楼故址 互不包含
-      - 前 3 字方案简单、可靠，覆盖了大部分主景点的命名习惯
-      - 代价是 "湖北省博物馆" 和 "湖北省美术馆" 会被归为同组
-        （但它们本来就是同类，可接受）
-
-    Args:
-        results: 原始检索结果（已按 score 排序）
-        max_per_group: 同一组最多保留几条
-        top_k: 最终返回几条
-
-    Returns:
-        去重后的结果列表
-    """
-    PREFIX_LEN = 3
-    group_count = {}
-    deduped = []
-
-    for r in results:
-        name = r.name
-        key = name[:PREFIX_LEN]
-
-        count = group_count.get(key, 0)
-        if count >= max_per_group:
-            continue
-
-        group_count[key] = count + 1
-        deduped.append(r)
-
-        if len(deduped) >= top_k:
-            break
-
-    return deduped
 
 
 # ============================================================
@@ -454,7 +446,6 @@ class Retriever:
         query: str,
         city: Optional[str] = None,
         top_k: int = 10,
-        max_per_group: int = 2,
         mode: str = "hybrid",
     ) -> list:
         """
@@ -464,7 +455,6 @@ class Retriever:
             query: 自然语言 query
             city: 城市过滤（唯一硬过滤，也用于剥 query 里的城市名）
             top_k: 返回条数
-            max_per_group: 同一主景点最多返回几条
             mode: 检索模式
                 - "vector"：只跑向量
                 - "bm25"：只跑 BM25
@@ -498,10 +488,8 @@ class Retriever:
         else:
             raise ValueError(f"未知 mode：{mode}，可选 vector / bm25 / hybrid")
 
-        # ---- 同名去重 ----
-        results = dedupe_by_containment(
-            results, max_per_group=max_per_group, top_k=top_k
-        )
+        # ---- 截断到 top_k（同名收敛已在 build 阶段完成）----
+        results = results[:top_k]
 
         # ---- 重排 rank ----
         for i, r in enumerate(results, start=1):
@@ -518,7 +506,6 @@ def main():
     parser.add_argument("--city", required=True, help="城市 key，如 wuhan")
     parser.add_argument("--query", required=True, help="查询语句")
     parser.add_argument("--top_k", type=int, default=10)
-    parser.add_argument("--max_per_group", type=int, default=2)
     parser.add_argument("--mode", default="hybrid", choices=["vector", "bm25", "hybrid"])
     args = parser.parse_args()
 
@@ -532,7 +519,6 @@ def main():
         args.query,
         city=city_name,
         top_k=args.top_k,
-        max_per_group=args.max_per_group,
         mode=args.mode,
     )
 

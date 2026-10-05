@@ -102,6 +102,17 @@ poi:
     usage: [filter]
     desc: 景区等级，如"5A"。口碑方案可用于筛高质量景点
 
+  level:
+    type: string
+    required: false
+    stage: build
+    usage: [filter]
+    desc: |
+      清洗后的景区等级，从 poi_level 里抽 "NA"（5A/4A/3A）。
+      poi_level 字段是脏的（非景区会存类型词，如"特色商业街"），
+      所以 build 阶段单独派生一个干净字段。
+      口碑方案用它：5A 必选，4A 加权，3A 及以下不用。
+
   photos:
     type: list[string]
     required: false
@@ -195,6 +206,25 @@ poi:
     stage: build
     usage: [compute]
     desc: 经度，从 location 解析。规则同 lat
+
+  group:
+    type: string
+    required: true
+    stage: build
+    usage: [system]
+    desc: |
+      canonical 主景点名。同一主景点的多条记录（如「户部巷」及其风情街、小吃街）
+      在 build 阶段合并成一条，group 记录合并后保留的组名，等于 name。
+
+  aliases:
+    type: list[string]
+    required: false
+    stage: build
+    usage: [embed, display]
+    desc: |
+      被合并进来的同主景点变体名，如 ["户部巷风情街", "户部巷小吃一条街"]。
+      embed 进 text，让「户部巷风情街」这类查询也能命中该组；
+      display 供前端和生成阶段引用（LLM 可顺势提到子设施）。
 
   # ---------- 系统字段 ----------
   source:
@@ -299,7 +329,7 @@ crowd_to_tags:
 # build 阶段用这个模板把字段拼成 text，再交给 embedding 模型。
 #
 # 只放 usage 含 embed 的字段：
-#   name / city / district / clean_type / tags / behaviors / description
+#   name / aliases / city / district / clean_type / tags / behaviors / description
 #
 # 不放的字段及原因：
 #   address  - 门牌号对语义贡献小，且占 token
@@ -310,5 +340,5 @@ crowd_to_tags:
 # ============================================================
 
 text_template: |
-  {name}，位于{city}{district}。类型：{clean_type}，属于{tags}类，可以{behaviors}。
+  {name}{aliases}，位于{city}{district}。类型：{clean_type}，属于{tags}类，可以{behaviors}。
   {description}

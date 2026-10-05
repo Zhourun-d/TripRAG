@@ -26,6 +26,7 @@
 
 import argparse
 import json
+import re
 import shutil
 import pickle
 import jieba
@@ -44,6 +45,7 @@ from src.config import (
     CHROMA_DIR,
     list_cities,
     get_text_template,
+    get_city_config,
 )
 from src.logger import get_logger
 
@@ -131,6 +133,43 @@ def _split_tags(raw) -> list:
     return [x for x in items if x]
 
 
+def _parse_level(raw) -> str:
+    """
+    从 poi_level 里抽真正的景区等级。
+
+    注意：poi_level 字段是脏的——真景区存 "5A景区"，
+    商业街/寺庙这类存的是类型词（"特色商业街"、"寺庙"）。
+    所以只认 "NA" 模式，抽不到就返回空串。
+
+    例：
+        "5A景区"     → "5A"
+        "特色商业街"  → ""
+        ""           → ""
+    """
+    if not raw:
+        return ""
+    m = re.search(r"(\d)A", str(raw))
+    return f"{m.group(1)}A" if m else ""
+
+
+_PAREN_RE = re.compile(r"[（(][^（）()]*[）)]")
+
+
+def _clean_display_name(name: str) -> str:
+    """
+    清洗展示名：去掉括号后缀。
+
+    例：
+        "古德寺(宗教活动场所)(暂停开放)" → "古德寺"
+        "武汉江滩1期(沿江大道)"          → "武汉江滩1期"
+    清完为空则回退原名。
+    """
+    if not name:
+        return ""
+    cleaned = _PAREN_RE.sub("", str(name)).strip()
+    return cleaned or name
+
+
 def _clean_type(raw_type: str) -> str:
     """
     清洗 type：统一分隔符、去泛词、去重、逗号拼接。
@@ -195,6 +234,156 @@ def _parse_location(location: str) -> tuple[float, float]:
 
 
 # ============================================================
+# 2.5 主景点归组（同名去重 + canonical 合并）
+# ============================================================
+def _safe_float(v, default: float = -1.0) -> float:
+    """转 float，失败返回 default。"""
+    try:
+        return float(v)
+    except (TypeError, ValueError):
+        return default
+
+
+def load_poi_groups(city_key: str) -> dict:
+    """
+    读城市配置里的 poi_groups（人工归组 + 排除）。
+
+    结构：
+        {
+            "江汉路": ["江汉路步行街", ...],   # 显式合并：canonical: [成员...]
+            "no_merge": ["杨正古铁佛寺"],      # 显式拆分
+        }
+    """
+    cfg = get_city_config(city_key)
+    return cfg.get("poi_groups", {}) or {}
+
+
+def compute_canonical_map(names: set, poi_groups: dict) -> dict:
+    """
+    计算 name → canonical（主景点名）映射。
+
+    优先级：
+        1. no_merge 里的名字 → 自身（显式拆分，不参与自动归组）
+        2. poi_groups 显式成员 → 声明的组名
+        3. 其余 → 全库名字里「能作为该 name 子串的最短名字」，没有则自身
+
+    注意：人工声明的 canonical 名不进入自动词表，避免连锁误合
+    （否则「世界城光谷步行街」会被「光谷步行街」吸走）。
+    """
+    no_merge = set(poi_groups.get("no_merge", []) or [])
+
+    explicit = {}   # 成员名 → 声明的组名
+    for canonical, members in poi_groups.items():
+        if canonical == "no_merge":
+            continue
+        for m in members or []:
+            explicit[m] = canonical
+
+    # 自动词表：只放真实存在的名字，按长度升序（先匹配最短的）
+    vocab = sorted((n for n in names if n), key=len)
+
+    def resolve(c: str) -> str:
+        """跟随 explicit 链，落到最终 canonical。"""
+        seen = set()
+        while c in explicit and c not in seen:
+            seen.add(c)
+            c = explicit[c]
+        return c
+
+    canon = {}
+    for n in names:
+        if not n:
+            continue
+        if n in no_merge:
+            canon[n] = n
+        elif n in explicit:
+            canon[n] = resolve(explicit[n])
+        else:
+            best = next((c for c in vocab if c in n), None)
+            canon[n] = resolve(best) if best else n
+    return canon
+
+
+def group_pois(pois: list[dict], city_key: str) -> list[dict]:
+    """
+    把同一主景点的多条记录合并成一条。
+
+    顺带修掉「未按 name 去重」的 bug：同名记录会落进同一个 canonical 组，
+    代表记录取 rating 最高的一条，tags / behaviors 取并集。
+
+    合并规则：
+        - name    = canonical
+        - aliases = 组内其它成员名（去重保序）
+        - rating  = 组内最大
+        - tags / behaviors = 并集
+        - 其余字段（坐标、地址、营业时间等）= 代表记录（rating 最高）
+    """
+    poi_groups = load_poi_groups(city_key)
+    names = {p.get("name", "") for p in pois if p.get("name")}
+    canon_map = compute_canonical_map(names, poi_groups)
+
+    buckets: dict[str, list[dict]] = {}
+    order: list[str] = []
+    for p in pois:
+        name = p.get("name", "")
+        if not name:
+            continue
+        key = canon_map.get(name, name)
+        if key not in buckets:
+            buckets[key] = []
+            order.append(key)
+        buckets[key].append(p)
+
+    merged = [_merge_bucket(k, buckets[k]) for k in order]
+
+    logger.info(f"  归组：{len(pois)} 条 → {len(merged)} 组")
+    multi = [k for k in order if len(buckets[k]) > 1]
+    if multi:
+        logger.info(f"  多成员组（{len(multi)}）：{multi}")
+    return merged
+
+
+def _merge_bucket(canonical: str, members: list[dict]) -> dict:
+    """合并一个组，返回合并后的 POI。"""
+    rep = max(
+        members,
+        key=lambda p: (
+            _safe_float(p.get("rating")),
+            len(str(p.get("description", "") or "")),
+        ),
+    )
+
+    aliases: list[str] = []
+    seen = set()
+    for m in members:
+        n = m.get("name", "")
+        if n and n != canonical and n not in seen:
+            seen.add(n)
+            aliases.append(n)
+
+    merged = dict(rep)
+    merged["name"] = canonical
+    merged["group"] = canonical
+    merged["aliases"] = aliases
+    merged["rating"] = max(_safe_float(m.get("rating")) for m in members)
+    merged["tags"] = ",".join(_union_field(members, "tags"))
+    merged["behaviors"] = ",".join(_union_field(members, "behaviors"))
+    return merged
+
+
+def _union_field(members: list[dict], field: str) -> list[str]:
+    """把组内某字段（逗号分隔）取并集，去重保序。"""
+    out: list[str] = []
+    seen = set()
+    for m in members:
+        for x in _split_tags(m.get(field, "")):
+            if x not in seen:
+                seen.add(x)
+                out.append(x)
+    return out
+
+
+# ============================================================
 # 3. 拼 text（把字段拼成一段自然语言）
 # ============================================================
 def build_text(poi: dict, template: str) -> str:
@@ -213,8 +402,12 @@ def build_text(poi: dict, template: str) -> str:
     behaviors_normalized = ",".join(_split_tags(poi.get("behaviors", "")))
     clean_type = _clean_type(poi.get("type", ""))
 
+    aliases = poi.get("aliases", []) or []
+    aliases_str = f"（又称：{'、'.join(aliases)}）" if aliases else ""
+
     values = {
         "name": poi.get("name", ""),
+        "aliases": aliases_str,
         "city": poi.get("city", ""),
         "district": poi.get("district", ""),
         "clean_type": clean_type or "景点",   # 空时兜底
@@ -280,10 +473,13 @@ def build_documents(pois: list[dict], template: str) -> tuple[list[Document], li
         photos_raw = poi.get("photos", [])
         photos_str = json.dumps(photos_raw, ensure_ascii=False) if photos_raw else "[]"
 
+        poi["display_name"] = _clean_display_name(poi.get("name", ""))
+
         metadata = {
             # ---- 基础标识 ----
             "id": poi.get("id", ""),
             "name": poi.get("name", ""),
+            "display_name": poi["display_name"],
 
             # ---- 过滤字段 ----
             "city": poi.get("city", ""),
@@ -294,6 +490,7 @@ def build_documents(pois: list[dict], template: str) -> tuple[list[Document], li
             "rating": poi.get("rating", -1.0),
             "opentime": poi.get("opentime", ""),
             "poi_level": poi.get("poi_level", ""),
+            "level": _parse_level(poi.get("poi_level")),
             "address": poi.get("address", ""),
             "photos": photos_str,
             "description": poi.get("description", ""),
@@ -301,6 +498,9 @@ def build_documents(pois: list[dict], template: str) -> tuple[list[Document], li
             # ---- 计算字段 ----
             "lat": lat,
             "lng": lng,
+
+            # ---- 归组字段 ----
+            "group": poi.get("group", poi.get("name", "")),
 
             # ---- 系统字段 ----
             "source": poi.get("source", ""),
@@ -311,6 +511,11 @@ def build_documents(pois: list[dict], template: str) -> tuple[list[Document], li
             metadata["tags"] = tags_list
         if behaviors_list:
             metadata["behaviors"] = behaviors_list
+
+        # aliases（同主景点变体名）非空时才写入，供展示和生成阶段引用
+        aliases_list = poi.get("aliases", []) or []
+        if aliases_list:
+            metadata["aliases"] = aliases_list
 
         documents.append(Document(page_content=text, metadata=metadata))
         kept_pois.append(poi)
@@ -470,6 +675,11 @@ def build_city(city_key: str, force: bool = False) -> None:
 
     # ---- 读数据 ----
     pois = load_tagged(in_path)
+
+    # ---- 只保留旅游目的地，再做主景点归组（含同名去重）----
+    pois = [p for p in pois if p.get("is_attraction", True)]
+    logger.info("归组主景点（同名合并 + 变体折叠）...")
+    pois = group_pois(pois, city_key)
 
     # ---- 读 text 模板 ----
     template = get_text_template()

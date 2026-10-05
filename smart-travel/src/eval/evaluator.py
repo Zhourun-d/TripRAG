@@ -72,7 +72,13 @@ def run_eval(city_key: str, top_k: int = 10) -> dict:
     # ---- 逐条评估 ----
     case_results = []
     for case in cases:
-        query = case["query"]
+        # 前端场景：query 由 interests 按产品规则拼出（和生成流程实际发的完全一致）
+        if case.get("profile"):
+            interests = case["profile"].get("interests", [])
+            query = " ".join(interests) if interests else f"{city_name} 景点"
+        else:
+            query = case["query"]
+        case = {**case, "query": query}
 
         # 跑检索
         results = retriever.search(query, city=city_name, top_k=top_k)
@@ -98,7 +104,7 @@ def run_eval(city_key: str, top_k: int = 10) -> dict:
     diff_stats = {k: aggregate(v) for k, v in by_diff.items()}
 
     # ---- 输出报告 ----
-    print_report(overall, type_stats, diff_stats, case_results)
+    print_report(overall, type_stats, diff_stats, case_results, top_k)
 
     # ---- 保存 JSON 报告 ----
     report = {
@@ -139,13 +145,13 @@ def run_eval(city_key: str, top_k: int = 10) -> dict:
 # ============================================================
 # 控制台报告
 # ============================================================
-def print_report(overall, type_stats, diff_stats, case_results):
+def print_report(overall, type_stats, diff_stats, case_results, top_k=10):
     print()
     print("=" * 60)
     print("检索评估报告")
     print("=" * 60)
     print(f"【整体指标】")
-    print(f"  Hit Rate@{10}: {overall['hit_rate']:.3f}")
+    print(f"  Hit Rate@{top_k}: {overall['hit_rate']:.3f}")
     print(f"  MRR:          {overall['mrr']:.3f}")
     print(f"  Noise Rate:   {overall['noise_rate']:.3f}")
     print()

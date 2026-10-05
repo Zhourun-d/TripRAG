@@ -1,31 +1,44 @@
 """
-行程生成模块。
+行程生成模块（风格前置 + 选点定内容 + LLM 只写文案）。
 
-职责（大白话）：
-1. 接收结构化输入（城市、兴趣、同行人、天数、出发地、住宿区）
-2. 用兴趣作为 tags 过滤，召回一批候选 POI
-3. 把候选 POI 精简成给 LLM 的清单
-4. 拼 prompt，调 qwen-plus，一次生成三套行程方案
-5. 把结果切成三份返回
+职责：
+1. 接收结构化输入 + 行程风格（综合 / 口碑 / 悠闲）
+2. 召回 → spatial_sort 分天 → 每天 poi_picker 选点（点定死）
+3. 每天一次独立 LLM 调用，只写文案（不得增删景点，可调顺序/时间）
+4. 返回结构化结果，供前端渲染地图和每天卡片
+
+返回结构：
+    {
+      "style": "综合",
+      "seed": 123,
+      "days": [
+        {"day": "Day1", "text": "……",
+         "pois": [{name, aliases, level, photos, lat, lng, district, ...}, ...],
+         "warnings": [...]},
+        ...
+      ]
+    }
 
 设计要点：
-- 召回数量随天数变：max(20, days * 8)，封顶 60
-- 给 LLM 的 POI 描述：名字 | 类别 | 评分 | 亮点（不给地址和开放时间）
-- 输出自然语言，三套方案用 【综合】/【口碑】/【悠闲】 分隔
-- 返回字典 {"综合": "...", "口碑": "...", "悠闲": "..."}
-- 切分失败有兜底：全塞进"综合"
+- 选点定内容：每天去哪些点由 poi_picker 决定，LLM 不参与选点
+- 每天一次调用（并行），每天的点很少，prompt 小、更稳
+- 越界/漏提只记日志，不重试、不弹提示（LLM 顺带提邻近景点是加分项）
 """
 
 import argparse
-import re
+import json
+import os
+import random
+from concurrent.futures import ThreadPoolExecutor
 
 from dotenv import load_dotenv
-from langchain_community.chat_models.tongyi import ChatTongyi
-from langchain_core.messages import SystemMessage, HumanMessage
+from openai import OpenAI
 
-from src.config import PROJECT_ROOT
-from src.retrieve.retriever import Retriever
+from src.config import PROJECT_ROOT, kb_path
 from src.logger import get_logger
+from src.retrieve.retriever import Retriever
+from src.plan.spatial_sorter import spatial_sort, get_stay_coord
+from src.plan.poi_picker import pick, PLAN_CONFIG
 
 # 加载 .env（确保 DASHSCOPE_API_KEY 可用）
 load_dotenv(PROJECT_ROOT / ".env")
@@ -36,120 +49,100 @@ logger = get_logger("plan")
 # ============================================================
 # 配置
 # ============================================================
-LLM_MODEL = "qwen-plus"      # 生成行程用 plus，比 turbo 质量好
+LLM_MODEL = "qwen3.8-max"    # 生成行程（走 OpenAI 兼容接口）
 LLM_TEMPERATURE = 0.7        # 平衡稳定和多样
+ENABLE_THINKING = False      # 关掉深度思考（写文案不需要，且更慢）
+OPENAI_BASE_URL = "https://dashscope.aliyuncs.com/compatible-mode/v1"
 
-# 召回数量规则
-MIN_RECALL = 20              # 下限
-RECALL_PER_DAY = 8           # 每天对应多少条
-MAX_RECALL = 60              # 上限
+MIN_RECALL = 40              # 召回下限
+RECALL_PER_DAY = 20          # 每天对应多少条
+MAX_RECALL = 120             # 召回上限
 
-# 三套方案的名字
-PLAN_NAMES = ["综合", "口碑", "悠闲"]
+STYLES = ["综合", "口碑", "悠闲"]
+DEFAULT_STYLE = "综合"
+PLAN_NAMES = STYLES          # 兼容旧名字
+
+MAX_WORKERS = 4              # 每天一次调用的并行度
 
 
 # ============================================================
-# 1. 计算召回数量
+# 召回数量
 # ============================================================
 def calc_recall_count(days: int) -> int:
     """
-    根据天数算召回数量。
+    召回数量：max(40, days * 20)，封顶 120。
 
-    规则：max(20, days * 8)，封顶 60
+    为什么给这么宽：每天候选池必须明显大于 target（5）。
+    否则 pick() 会「池 ≤ 目标 → 全选」，三套风格就没区别了，
+    而且池太小会把中心地标（如黄鹤楼）漏在召回之外。
+    郊区会被丢掉，所以宁可多召回。
 
     例：
-        1 天 → 20
-        3 天 → 24
-        5 天 → 40
-        7 天 → 56
-        10 天 → 60（封顶）
+        1 天 → 40
+        2 天 → 40
+        3 天 → 60
+        4 天 → 80
+        5 天 → 100
+        6 天及以上 → 120（封顶）
     """
-    n = max(MIN_RECALL, days * RECALL_PER_DAY)
-    return min(n, MAX_RECALL)
+    return min(max(MIN_RECALL, days * RECALL_PER_DAY), MAX_RECALL)
 
 
 # ============================================================
-# 2. 把召回结果精简成给 LLM 的清单
+# prompt
 # ============================================================
-def build_poi_list(results: list) -> str:
-    """
-    把 SearchResult 列表，拼成给 LLM 看的候选景点清单。
+_COMMON_RULES = """你是一个旅行规划师，帮用户写「其中一天」的行程文案。
+风格：简洁、实用、口语化，像朋友给你列路线。
 
-    格式：
-        1. 黄鹤楼 | 历史人文 | 评分4.8 | 武汉地标，江南三大名楼之一
-        2. 户部巷 | 美食探店 | 评分4.7 | 武汉传统小吃聚集地
-        ...
+【硬约束】
+- 只能用下面【本日景点】里给出的地方，不得增加、不得删除、不得替换。
+- 只能调整它们的叙述顺序和时间安排。
+- 不要编造不存在的景点。
+- 以住宿地为中心安排每天的路线；不要写「从XX站出发」这类到站信息。
 
-    只给名字、类别、评分、亮点，不给地址和开放时间（省 token，也避免干扰）。
-    """
+【输出要求】
+- 只写这一天的一段话，不要写"Day1"这种前缀。
+- 不要 Markdown 标题（#）、不要列表符号（-、*）、不要 JSON。
+- 说清楚：先去哪、再去哪、大概什么时候、为什么这么排。
+- 本日景点要全部出现。"""
+
+_STYLE_RULES = {
+    "综合": "【方案定位】综合：平衡兴趣、交通和时间，节奏适中，不偏科。",
+    "口碑": "【方案定位】口碑：优选评分高、等级高的地方，整体质量优先；但要读起来像推荐路线，不要念评分数字。",
+    "悠闲": "【方案定位】悠闲：节奏慢，留白多，安排得宽松些，适合慢慢逛，别塞太满。",
+}
+
+
+def build_system_prompt(style: str) -> str:
+    return _COMMON_RULES + "\n\n" + _STYLE_RULES.get(style, _STYLE_RULES[DEFAULT_STYLE])
+
+
+def _display_name(p: dict) -> str:
+    """展示名：优先 display_name（去括号后缀），回退 name。"""
+    return p.get("display_name") or p.get("name", "")
+
+
+def build_day_poi_lines(pois: list) -> str:
+    """当天给定景点的清单（给 LLM 看）。"""
     lines = []
-    for i, r in enumerate(results, start=1):
-        meta = r.document.metadata
-        name = meta.get("name", "")
-        category = meta.get("category", "")
-        rating = meta.get("rating", "")
-        highlight = meta.get("highlight", "")
-
-        lines.append(f"{i}. {name} | {category} | 评分{rating} | {highlight}")
-
+    for i, p in enumerate(pois, start=1):
+        aliases = p.get("aliases") or []
+        alias_str = f"（含 {'/'.join(aliases)}）" if aliases else ""
+        lines.append(
+            f"{i}. {_display_name(p)}{alias_str} | {p.get('tags', '')} | {p.get('description', '')}"
+        )
     return "\n".join(lines)
 
 
-# ============================================================
-# 3. 拼 prompt
-# ============================================================
-def build_system_prompt() -> str:
-    """
-    系统 prompt：定义角色、任务、三套方案的区别、输出格式。
-    """
-    return """你是一个旅行规划师，帮用户安排行程。你的风格是简洁、实用、口语化，像朋友给你列了个路线清单。
-
-【任务】
-根据用户需求和候选景点，生成三套不同的行程方案。
-评分仅给你参考，生成方案的时候不要提评分。例如：“武汉大学（评分5.0），黄鹤楼公园（评分4.7，登楼必选）", 不要出现这类字段！
-
-【三套方案的区别】
-1. 【综合】平衡兴趣、交通和时间，节奏适中，不偏科。
-2. 【口碑】评分高、等级高的景点作为参考，不过暂无评分的也可考虑，生成的方案不提评分。
-3. 【悠闲】每天景点少，留白多，节奏慢，适合慢慢逛。
-
-【语言风格】
-- 简洁自然，像朋友推荐路线一样直白
-- 不要文艺抒情，不要用比喻和排比，不要过度渲染
-- 不要用"轻轻收尾""按下淡出键"这类文艺表达
-- 重点是信息：去哪、顺序、大致时间、为什么推荐
-
-【关于评分】
-候选清单里带评分，但评分只作参考，不是重点。
-- 评分不提具体数字，只能说评分较高这些模糊概念
-- 目标是读起来像推荐路线，不像念数据
-
-【输出格式要求】
-- 不要用 Markdown 标题（#）、不要用列表符号（-、*）、不要用 JSON
-- 每套方案开头单独一行写方案名：【综合】、【口碑】、【悠闲】
-- 如果行程是 2 天及以上，每天以"Day1：""Day2："这样的形式开头，后面接一整段内容
-- 如果行程只有 1 天，不写"Day1："前缀，直接写内容
-- 每天的内容写成一整段，段与段之间空一行
-- 三套方案之间空两行
-
-【重要】
-- 只用候选景点里的地方，不要自己编造景点
-- 每天的景点数量要合理，不要塞太满，也不要太空
-- 出发地和住宿区域只作为参考，帮助安排路线顺序，不要写进"候选景点"
-"""
-
-
 def build_user_prompt(
-    city: str,
-    interests: list,
-    companion: str,
-    days: int,
-    depart_from: str,
-    stay_district: str,
-    poi_list: str,
+    city: str, interests: list, companion: str, days: int,
+    stay_district: str, day_name: str, pois: list,
 ) -> str:
     """
-    用户 prompt：用户需求 + 候选景点清单。
+    拼一天的 user prompt。
+
+    只给住宿地，不给车站：用户通常先回酒店放行李再出门，
+    「从武汉站出发」对行程没意义。
     """
     interests_str = "、".join(interests) if interests else "不限"
 
@@ -157,184 +150,245 @@ def build_user_prompt(
 城市：{city}
 兴趣偏好：{interests_str}
 同行人：{companion}
-天数：{days} 天
-出发地：{depart_from}
-住宿区域：{stay_district}
+行程共 {days} 天，这是其中：{day_name}
+住宿地：{stay_district}
 
-【候选景点】（共 {len(poi_list.splitlines())} 个）
-{poi_list}
+【本日景点】（共 {len(pois)} 个，必须全部出现，不得增删）
+{build_day_poi_lines(pois)}
 
-请根据以上信息，生成三套 {days} 天的行程方案。"""
+请写 {day_name} 这一天的行程文案。"""
 
 
 # ============================================================
-# 4. 切分三套方案
+# 越界校验
 # ============================================================
-def split_plans(raw: str) -> dict:
+def _load_all_names(city_key: str) -> set:
+    """全库景点名，用于检测 LLM 是否用了清单外的景点。"""
+    p = kb_path(city_key)
+    names = set()
+    if p.exists():
+        with open(p, "r", encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    o = json.loads(line)
+                    names.add(o.get("display_name") or o.get("name", ""))
+                except json.JSONDecodeError:
+                    continue
+    names.discard("")
+    return names
+
+
+def _out_of_scope(text: str, all_names: set, allowed: set) -> list:
+    """文本里出现、但不属于当天清单的已知景点。"""
+    return [n for n in all_names if n in text and n not in allowed]
+
+
+def _mentioned(name: str, text: str) -> bool:
     """
-    把 LLM 的完整输出，按【综合】/【口碑】/【悠闲】切分成三段。
+    名字是否在文本里被提到（宽松匹配）。
 
-    兜底：如果切不出来，全部塞进"综合"，另外两个为空。
-
-    返回：{"综合": "...", "口碑": "...", "悠闲": "..."}
+    LLM 常把全名简写：如把「凌波门东湖观景点」写成「凌波门观景点」，
+    所以除了全名，再退化到前 3 字判断。
     """
-    result = {name: "" for name in PLAN_NAMES}
-
-    # 用正则找每个方案名的位置
-    # 匹配形如【综合】或 [综合] 或 综合：的标记
-    positions = {}
-    for name in PLAN_NAMES:
-        # 找 【综合】 / [综合] / 综合： 这几种写法
-        pattern = rf"[【\[]\s*{name}\s*[】\]]|{name}[:：]"
-        match = re.search(pattern, raw)
-        if match:
-            positions[name] = match.start()
-
-    # 如果三个都没找到，兜底
-    if not positions:
-        logger.warning("  方案切分失败，全部塞进'综合'")
-        result["综合"] = raw.strip()
-        return result
-
-    # 按位置排序，切出每段
-    sorted_names = sorted(positions.keys(), key=lambda n: positions[n])
-    for i, name in enumerate(sorted_names):
-        start = positions[name]
-        if i + 1 < len(sorted_names):
-            end = positions[sorted_names[i + 1]]
-        else:
-            end = len(raw)
-
-        segment = raw[start:end].strip()
-        # 去掉开头的方案名标记
-        segment = re.sub(rf"^[【\[]?\s*{name}\s*[】\]]?[:：]?\s*", "", segment)
-        result[name] = segment
-
-    return result
+    if not name:
+        return True
+    if name in text:
+        return True
+    return len(name) >= 3 and name[:3] in text
 
 
 # ============================================================
-# 5. 主流程：生成行程
+# LLM 调用
 # ============================================================
-def generate(
+def _call_llm(system_prompt: str, user_prompt: str) -> str:
+    """单次对话调用（走 OpenAI 兼容接口，和打标模块保持一致）。"""
+    client = OpenAI(
+        api_key=os.getenv("DASHSCOPE_API_KEY"),
+        base_url=OPENAI_BASE_URL,
+    )
+    resp = client.chat.completions.create(
+        model=LLM_MODEL,
+        messages=[
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_prompt},
+        ],
+        temperature=LLM_TEMPERATURE,
+        extra_body={"enable_thinking": ENABLE_THINKING},
+    )
+    return (resp.choices[0].message.content or "").strip()
+
+
+def _write_one_day(
+    style, city, interests, companion, days, stay_district,
+    day_name, pois, all_names,
+) -> tuple[str, list]:
+    """
+    写一天文案。
+
+    越界/漏提只记日志，不重试、不弹提示：
+    LLM 顺带提一句邻近景点（如"登晴川阁望长江、看龟山与黄鹤楼"）是加分项，不算违规。
+    """
+    allowed = {_display_name(p) for p in pois}
+    system_prompt = build_system_prompt(style)
+    user_prompt = build_user_prompt(
+        city, interests, companion, days, stay_district, day_name, pois
+    )
+
+    try:
+        text = _call_llm(system_prompt, user_prompt)
+    except Exception as e:
+        logger.error(f"[{day_name}] LLM 调用失败：{e}")
+        return f"（这一天生成失败：{e}）", [f"LLM 调用失败：{e}"]
+
+    bad = _out_of_scope(text, all_names, allowed)
+    if bad:
+        logger.info(f"[{day_name}] 顺带提到清单外景点（仅记录）：{bad}")
+
+    missing = [n for n in allowed if not _mentioned(n, text)]
+    if missing:
+        logger.info(f"[{day_name}] 未明显提到（仅记录）：{missing}")
+
+    return text, []
+
+
+# ============================================================
+# 主流程
+# ============================================================
+def generate_plan(
     city: str,
     interests: list,
     companion: str,
     days: int,
     depart_from: str,
     stay_district: str,
+    style: str = DEFAULT_STYLE,
     city_key: str = "wuhan",
+    seed: int = None,
 ) -> dict:
     """
-    生成三套行程方案。
+    生成一套行程（按指定风格）。
 
     Args:
-        city: 城市名，如"武汉"
-        interests: 兴趣标签列表，如 ["历史人文", "自然风光"]
-        companion: 同行人，如"情侣"
-        days: 天数
-        depart_from: 出发地，如"武汉站"
-        stay_district: 住宿区，如"武昌区"
-        city_key: 城市 key，用于加载向量库，如"wuhan"
+        style: 综合 / 口碑 / 悠闲
+        seed: 随机种子。None 则每次随机（前端「换一批」靠它）
+        depart_from: 已不参与生成（前端仍传，保留兼容）；行程以住宿地为中心
 
     Returns:
-        {"综合": "...", "口碑": "...", "悠闲": "..."}
+        {"style": ..., "seed": ..., "days": [{"day","text","pois","warnings"}, ...]}
     """
+    if style not in PLAN_CONFIG:
+        logger.warning(f"未知风格 {style}，退回 {DEFAULT_STYLE}")
+        style = DEFAULT_STYLE
+
+    if seed is None:
+        seed = random.randint(1, 10 ** 9)
+
     logger.info("=" * 60)
-    logger.info(f"生成行程：{city}，{days} 天，兴趣={interests}")
+    logger.info(f"生成行程：{city}，{days} 天，风格={style}，兴趣={interests}，seed={seed}")
     logger.info("=" * 60)
 
     # ---- 1. 召回 ----
     recall_n = calc_recall_count(days)
-    logger.info(f"召回数量：{recall_n}")
-
     retriever = Retriever(f"{city_key}_v1")
+    # 只用「兴趣词」做 query：
+    # 1) 城市已经是硬过滤（Chroma filter），写进 query 也会被剥掉，多余；
+    # 2) 追加「旅游 景点」这类泛词会把语义重心带偏
+    #    （实测 自然风光 0.80→0.60、夜生活 1.00→0.50）。
+    query = " ".join(interests) if interests else f"{city} 景点"
     results = retriever.search(
-        query=f"{city} {' '.join(interests)} 旅游 景点",
+        query=query,
         city=city,
-        tags=interests if interests else None,
         top_k=recall_n,
     )
-    logger.info(f"召回结果：{len(results)} 条")
-
+    logger.info(f"召回：{len(results)} 条")
     if not results:
-        logger.warning("召回为空，无法生成行程")
-        return {name: "抱歉，没有找到符合条件的景点。" for name in PLAN_NAMES}
+        return {"style": style, "seed": seed, "days": []}
 
-    # ---- 2. 拼清单 ----
-    poi_list = build_poi_list(results)
+    # ---- 2. 分天 ----
+    plan, _ = spatial_sort(results, days, stay_district, city_key, seed=seed)
+    stay_lat, stay_lng = get_stay_coord(stay_district, city_key)
 
-    # ---- 3. 拼 prompt ----
-    system_prompt = build_system_prompt()
-    user_prompt = build_user_prompt(
-        city=city,
-        interests=interests,
-        companion=companion,
-        days=days,
-        depart_from=depart_from,
-        stay_district=stay_district,
-        poi_list=poi_list,
-    )
+    # ---- 3. 每天选点（点定死）----
+    day_jobs = []
+    for di, (day_name, day_pois) in enumerate(plan.items()):
+        picked = pick(
+            day_pois=day_pois,
+            plan_type=style,
+            interests=interests,
+            companion=companion,
+            city_key=city_key,
+            start_lat=stay_lat,
+            start_lng=stay_lng,
+            seed=seed,
+            day_index=di,
+        )
+        day_jobs.append((di, day_name, picked))
+        logger.info(f"  {day_name} 选点：{[p['name'] for p in picked]}")
 
-    # ---- 4. 调 LLM ----
-    logger.info(f"调用 {LLM_MODEL}（temperature={LLM_TEMPERATURE}）...")
-    llm = ChatTongyi(model=LLM_MODEL, temperature=LLM_TEMPERATURE)
+    if not day_jobs:
+        return {"style": style, "seed": seed, "days": []}
 
-    messages = [
-        SystemMessage(content=system_prompt),
-        HumanMessage(content=user_prompt),
-    ]
+    # ---- 4. 每天一次 LLM（并行）----
+    all_names = _load_all_names(city_key)
 
-    try:
-        response = llm.invoke(messages)
-        raw = response.content.strip()
-    except Exception as e:
-        logger.error(f"LLM 调用失败：{e}")
-        return {name: f"生成失败：{e}" for name in PLAN_NAMES}
+    def _run(job):
+        di, day_name, picked = job
+        text, warnings = _write_one_day(
+            style, city, interests, companion, days, stay_district,
+            day_name, picked, all_names,
+        )
+        return di, day_name, picked, text, warnings
 
-    logger.info(f"LLM 返回 {len(raw)} 字")
+    with ThreadPoolExecutor(max_workers=min(MAX_WORKERS, len(day_jobs))) as ex:
+        written = list(ex.map(_run, day_jobs))
 
-    # ---- 5. 切分三套方案 ----
-    plans = split_plans(raw)
+    # ---- 5. 组装 ----
+    out_days = []
+    for di, day_name, picked, text, warnings in sorted(written, key=lambda x: x[0]):
+        out_days.append({
+            "day": day_name,
+            "text": text,
+            "pois": picked,
+            "warnings": warnings,
+        })
 
-    for name in PLAN_NAMES:
-        logger.info(f"  【{name}】{len(plans[name])} 字")
-
-    return plans
+    logger.info(f"生成完成：{len(out_days)} 天")
+    return {"style": style, "seed": seed, "days": out_days}
 
 
 # ============================================================
 # 命令行测试入口
 # ============================================================
 def main():
-    """手动测试行程生成"""
     parser = argparse.ArgumentParser(description="行程生成测试")
     parser.add_argument("--city_key", default="wuhan", help="城市 key")
     parser.add_argument("--city", default="武汉", help="城市名")
-    parser.add_argument("--interests", nargs="*", default=["历史人文", "自然风光"],
-                        help="兴趣标签，可多个")
-    parser.add_argument("--companion", default="情侣", help="同行人")
-    parser.add_argument("--days", type=int, default=3, help="天数")
-    parser.add_argument("--depart_from", default="武汉站", help="出发地")
-    parser.add_argument("--stay_district", default="武昌区", help="住宿区")
+    parser.add_argument("--style", default=DEFAULT_STYLE, choices=STYLES)
+    parser.add_argument("--interests", nargs="*", default=["历史人文", "自然风光"])
+    parser.add_argument("--companion", default="情侣")
+    parser.add_argument("--days", type=int, default=3)
+    parser.add_argument("--depart_from", default="武汉站")
+    parser.add_argument("--stay_district", default="武昌区")
+    parser.add_argument("--seed", type=int, default=None)
     args = parser.parse_args()
 
-    plans = generate(
-        city=args.city,
-        interests=args.interests,
-        companion=args.companion,
-        days=args.days,
-        depart_from=args.depart_from,
-        stay_district=args.stay_district,
-        city_key=args.city_key,
+    res = generate_plan(
+        city=args.city, interests=args.interests, companion=args.companion,
+        days=args.days, depart_from=args.depart_from, stay_district=args.stay_district,
+        style=args.style, city_key=args.city_key, seed=args.seed,
     )
 
-    # ---- 打印结果 ----
-    for name in PLAN_NAMES:
+    print(f"\n风格：{res['style']}   seed={res.get('seed')}   天数：{len(res['days'])}")
+    for d in res["days"]:
         print("\n" + "=" * 60)
-        print(f"【{name}】")
-        print("=" * 60)
-        print(plans[name])
+        print(f"{d['day']}   景点：{[p['name'] for p in d['pois']]}")
+        if d.get("warnings"):
+            print(f"  警告：{d['warnings']}")
+        print("-" * 60)
+        print(d["text"])
 
 
 if __name__ == "__main__":
