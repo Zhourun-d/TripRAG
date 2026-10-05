@@ -1,129 +1,207 @@
 # config/schema.yaml
-
+#
+# POI 数据规范：定义一条 POI 有哪些字段、每个字段何时产生、怎么用。
+#
+# 本文件是数据层的框架：
+#   - crawl/clean/tag/build 四个阶段，都按这里的字段定义来产出数据
+#   - text_template 决定哪些字段进向量库，改这里等于改检索行为
+#
 # ============================================================
-# POI 字段规范
+# 字段元信息说明
 # ============================================================
-# stage: 字段在哪个阶段产生
+# stage：字段在哪个阶段产生
 #   crawl   - 高德 API 直接返回
-#   clean   - 清洗阶段补全
+#   clean   - 清洗阶段补全或派生
 #   tag     - LLM 打标签产生
-#   build   - 构建知识库时派生
-# usage: 字段用途
-#   filter  - 用于 metadata 过滤（不进 embedding）
-#   embed   - 拼进向量化文本
-#   display - 仅用于前端展示
-#   system  - 系统字段，不参与业务
+#   build   - 构建向量库时派生
+#
+# usage：字段用途，可以是多个（list）
+#   filter  - 进 metadata，用于检索时的精确过滤（如按城市、标签筛）
+#   embed   - 进 text_template，参与向量化（影响语义检索）
+#   display - 进 metadata，仅前端展示，不参与检索
+#   compute - 进 metadata，用于数值计算（如经纬度算距离）
+#   system  - 系统字段，不参与业务逻辑
+#
+# 一个字段可以同时有多个 usage，例如 tags 既进 text（embed）
+# 又用于过滤（filter），写为 [embed, filter]。
 # ============================================================
 
 poi:
-  # ---------- 基础字段（crawl 阶段） ----------
+  # ---------- 基础字段（crawl 阶段产生） ----------
   id:
     type: string
     required: true
     stage: crawl
-    usage: system
-    desc: 高德 POI ID，全局唯一
+    usage: [system]
+    desc: 高德 POI ID，全局唯一，用于去重
 
   name:
     type: string
     required: true
     stage: crawl
-    usage: embed
-    desc: 景点名称
+    usage: [embed]
+    desc: 景点名称，如"黄鹤楼"
 
   city:
     type: string
     required: true
     stage: crawl
-    usage: filter
-    desc: 城市名，如"武汉"
+    usage: [embed, filter]
+    desc: 城市名，如"武汉"。filter 用途防止跨城市检索串结果
 
   district:
     type: string
     required: true
     stage: clean
-    usage: filter
-    desc: 区县名，如"武昌区"，从 address 解析或匹配 districts 列表
+    usage: [embed, filter]
+    desc: 区县名，如"武昌区"。clean 阶段从高德 adname 字段取，取不到则丢弃该条，本质上也是crawl阶段获取
 
   address:
     type: string
     required: false
     stage: crawl
-    usage: embed
-    desc: 详细地址
+    usage: [display]
+    desc: 详细地址。不进向量库（门牌号对语义贡献小），仅供生成阶段参考
 
   location:
     type: string
     required: true
     stage: crawl
-    usage: system
-    desc: "经度,纬度"
+    usage: [compute]
+    desc: 经纬度字符串。build 阶段拆成 lat/lng 两个 float 进 metadata
 
   type:
     type: string
     required: false
     stage: crawl
-    usage: embed
-    desc: 高德类型标签，如"风景名胜;旅游景点"
+    usage: [display]
+    desc: |
+      高德细粒度类型标签，如"风景名胜;旅游景点;寺庙"。
+      只进 metadata，不进 text。
+      进 text 的是 clean_type（见下方 build 字段），清洗过、去泛词、去重。
 
-  # ---------- 业务字段（crawl 阶段） ----------
+  # ---------- 业务字段（crawl 阶段产生） ----------
   rating:
-    type: string
+    type: float
     required: false
-    stage: crawl
-    usage: filter
-    desc: 用户评分，"暂无"表示没有
+    stage: clean
+    usage: [filter]
+    desc: 用户评分。clean 阶段转 float，无评分记 -1.0
 
   opentime:
     type: string
     required: false
     stage: crawl
-    usage: embed
-    desc: 营业时间
+    usage: [display]
+    desc: 营业时间，供生成阶段回答"几点关门"类追问
+
+  poi_level:
+    type: string
+    required: false
+    stage: crawl
+    usage: [filter]
+    desc: 景区等级，如"5A"。口碑方案可用于筛高质量景点
 
   photos:
     type: list[string]
     required: false
     stage: crawl
-    usage: display
+    usage: [display]
     desc: 图片 URL 列表
 
-  # ---------- 标签字段（tag 阶段） ----------
+  # ---------- 标签字段（tag 阶段产生） ----------
+  category:
+    type: string
+    required: true
+    stage: tag
+    usage: [filter]
+    desc: |
+      兴趣大类，从固定词表选，如"历史人文"。
+      仅当 is_attraction=true 时才有值；is_attraction=false 时为空字符串。
+      由 LLM 判断，比规则推断灵活。
+      注意：不进 text（和 tags 重复），只用于 filter 兜底。
+
   tags:
     type: string
     required: true
     stage: tag
-    usage: filter
-    desc: 兴趣标签，逗号分隔，取自固定词表
+    usage: [embed, filter]
+    desc: |
+      兴趣标签，逗号分隔，从固定词表选 1~3 个。
+      embed 进 text 供语义匹配，filter 用于检索时按标签筛。
 
-  crowd:
+  behaviors:
+    type: string
+    required: true
+    stage: tag
+    usage: [embed, filter]
+    desc: |
+      体验词，逗号分隔，从固定词表（behavior_tags）选 0~N 个。
+      描述"这个点能做什么、有什么氛围"，如"散步,拍照,安静"。
+      embed 进 text 供语义匹配，filter 用于检索时按体验筛。
+      仅当 is_attraction=true 时才有值。
+
+  description:
     type: string
     required: false
     stage: tag
-    usage: filter
-    desc: 适合人群，逗号分隔，取自固定词表
+    usage: [embed]
+    desc: |
+      一句话自然语言描述，由 LLM 生成。
+      只写"能做什么、有什么特点"，不写"适合谁"（人群映射由系统做）。
+      接受一定幻觉风险，但 prompt 里会约束"不确定的不写"。
 
-  highlight:
-    type: string
-    required: false
+  is_attraction:
+    type: bool
+    required: true
     stage: tag
-    usage: embed
-    desc: 一句话亮点，不超过 30 字
+    usage: [filter]
+    desc: |
+      是不是旅游目的地。false 的 POI 不进向量库。
+      判断标准：
+        景区/公园/博物馆/寺庙/历史建筑/知名商业街/知名美食街/自然景观 → true
+        单个店铺/批发市场/学校/医院/写字楼/住宅小区 → false
+        交通工具（观光巴士、游船、码头）→ false
+        景点内部子设施（大殿、观景台、文理学部、南馆、沙滩、音乐喷泉）→ false
 
-  # ---------- 派生字段（build 阶段） ----------
+  # ---------- 派生字段（build 阶段产生） ----------
   text:
     type: string
     required: true
     stage: build
-    usage: embed
-    desc: 由上述字段拼装的向量化文本，不单独存储
+    usage: [embed]
+    desc: 由 text_template 拼装的向量化文本，不单独存储
+
+  clean_type:
+    type: string
+    required: false
+    stage: build
+    usage: [embed]
+    desc: |
+      清洗后的 type：去掉泛词、去重、逗号分隔。
+      build 阶段从 type 派生，只用于拼 text。
+      泛词表：风景名胜、公园广场、餐饮相关、购物服务、科教文化服务。
+
+  lat:
+    type: float
+    required: false
+    stage: build
+    usage: [compute]
+    desc: 纬度，从 location 解析。无效坐标记 -999.0，空间排序时排除
+
+  lng:
+    type: float
+    required: false
+    stage: build
+    usage: [compute]
+    desc: 经度，从 location 解析。规则同 lat
 
   # ---------- 系统字段 ----------
   source:
     type: string
     required: true
     stage: crawl
-    usage: system
+    usage: [system]
     default: amap
     desc: 数据来源
 
@@ -131,20 +209,17 @@ poi:
     type: string
     required: true
     stage: crawl
-    usage: system
+    usage: [system]
     desc: 抓取时间，ISO 格式
-
-  interest_group:
-    type: string
-    required: false
-    stage: crawl
-    usage: system
-    desc: 来源兴趣分组，如"历史人文"，来自 cities.yaml 的 core_spots
 
 # ============================================================
 # 固定词表
 # ============================================================
+# 下面是 LLM 打标签的"候选集"，限制 LLM 只能从里面选，
+# 避免自由发挥导致标签发散、无法用于过滤。
 
+# 兴趣大类：POI 的主分类，LLM 从里面选 1~3 个
+# 对应 poi.category / poi.tags
 interest_tags:
   - 历史人文
   - 自然风光
@@ -152,30 +227,88 @@ interest_tags:
   - 购物休闲
   - 夜生活
 
-crowd_tags:
-  - 独行
-  - 情侣
-  - 家庭
-  - 朋友
-  - 历史爱好者
-  - 摄影爱好者
-  - 亲子
-  - 文艺青年
+# 体验词：描述"能做什么、什么氛围"，LLM 从里面选 0~N 个
+# 对应 poi.behaviors
+# 同行人和景点共用这套词——同行人映射见 crowd_to_tags
+behavior_tags:
+  - 散步
+  - 拍照
+  - 看展
+  - 赏景
+  - 逛街
+  - 美食
+  - 研学
+  - 遛娃
+  - 热闹
+  - 安静
+  - 文艺
+  - 夜游
+
+# 同行人 → 体验词映射
+# 用户选"情侣"，系统映射到这些体验词，参与检索时拼进 query。
+# 和 behavior_tags 是同一套词，保证"人"和"景"能匹配上。
+crowd_to_tags:
+  情侣:
+    文艺: 3.0     # 极度稀缺，命中概率提高
+    夜游: 2.5     # 稀缺 + 情侣场景典型
+    安静: 2.0     # 中等 + 情侣场景
+    拍照: 1.0     # 泛滥，但情侣确实爱拍照
+    散步: 1.0     # 泛滥
+    赏景: 1.0     # 泛滥
+    美食: 1.0     # 中等
+    逛街: 0.5     # 泛滥，降权
+
+  朋友:
+    夜游: 2.0     # 朋友聚会典型
+    热闹: 1.5     # 泛滥但朋友场景核心
+    美食: 1.5
+    逛街: 1.0
+    拍照: 0.8
+    赏景: 0.5
+    文艺: 0.5
+
+  亲子:
+    遛娃: 3.0     # 极度稀缺 + 亲子核心
+    研学: 2.5     # 稀缺 + 亲子教育
+    看展: 2.0     # 稀缺
+    热闹: 1.0
+    散步: 1.0
+    赏景: 0.8
+    美食: 0.8
+
+  独行:
+    文艺: 3.0     # 极度稀缺 + 独行场景
+    安静: 2.5     # 稀缺 + 独行核心
+    看展: 2.0
+    拍照: 1.0
+    赏景: 1.0
+    散步: 1.0
+
+  家庭:
+    遛娃: 2.5
+    散步: 1.5
+    赏景: 1.5
+    美食: 1.5
+    逛街: 1.0
+    拍照: 1.0
+    安静: 0.8
 
 # ============================================================
 # 向量化文本模板
 # ============================================================
-# build 阶段按这个模板拼 text
-# 只包含 usage=embed 的字段
+# build 阶段用这个模板把字段拼成 text，再交给 embedding 模型。
+#
+# 只放 usage 含 embed 的字段：
+#   name / city / district / clean_type / tags / behaviors / description
+#
+# 不放的字段及原因：
+#   address  - 门牌号对语义贡献小，且占 token
+#   type     - 高德原始分类，噪音大（重复、泛词），清洗后的 clean_type 才进 text
+#   category - 和 tags 重复
+#   rating   - 数值进文本意义不大，且会引入"高分=相关"的偏见
+#   opentime - 文本形式杂，语义价值低
 # ============================================================
 
 text_template: |
-  【景点名称】{name}
-  【所在城市】{city} · {district}
-  【类别】{category}
-  【地址】{address}
-  【评分】{rating}
-  【开放时间】{opentime}
-  【兴趣标签】{tags}
-  【适合人群】{crowd}
-  【亮点】{highlight}
+  {name}，位于{city}{district}。类型：{clean_type}，属于{tags}类，可以{behaviors}。
+  {description}

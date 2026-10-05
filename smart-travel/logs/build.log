@@ -70,3 +70,452 @@
 2026-09-19 22:27:38 [INFO] build -   Chroma 目录：D:\Code\PyCharm\GraduationProject\智能旅游系统-test2\chroma_db\wuhan_v1
 2026-09-19 22:27:38 [INFO] build -   jsonl 存档：D:\Code\PyCharm\GraduationProject\智能旅游系统-test2\data\knowledge_base\wuhan_v1.jsonl
 2026-09-19 22:27:38 [INFO] build - ============================================================
+2026-09-22 16:02:41 [INFO] build - ============================================================
+2026-09-22 16:02:41 [INFO] build - 开始构建知识库：wuhan
+2026-09-22 16:02:41 [INFO] build - ============================================================
+2026-09-22 16:02:41 [INFO] build - 读取：D:\Code\PyCharm\GraduationProject\智能旅游系统-test2\data\processed\wuhan_tagged.json
+2026-09-22 16:02:41 [INFO] build -   读入 250 条 POI
+2026-09-22 16:02:41 [INFO] build - 拼装 text...
+2026-09-22 16:02:41 [INFO] build - 
+2026-09-22 16:02:41 [INFO] build - ============================================================
+2026-09-22 16:02:41 [INFO] build - 样例 text（第一条）：
+2026-09-22 16:02:41 [INFO] build - ============================================================
+2026-09-22 16:02:41 [INFO] build - 【景点名称】武汉大学
+【所在城市】武汉 · 武昌区
+【类别】自然风光
+【地址】珞珈山街道八一路299号
+【评分】5.0
+【开放时间】暂无
+【兴趣标签】历史人文,自然风光
+【适合人群】朋友,摄影爱好者,文艺青年
+【亮点】樱花盛开时的校园，美如画卷
+2026-09-22 16:02:41 [INFO] build - ============================================================
+2026-09-22 16:02:41 [INFO] build - 
+2026-09-22 16:02:41 [INFO] build -   删除旧目录：D:\Code\PyCharm\GraduationProject\智能旅游系统-test2\chroma_db\wuhan_v1
+2026-09-22 16:02:41 [INFO] build -   初始化 embedding 模型：text-embedding-v2
+2026-09-22 16:02:42 [INFO] build -   写入 Chroma（250 条）...
+2026-09-22 16:02:42 [INFO] build -   注意：embedding 调用较慢，请耐心等待
+2026-09-22 16:02:50 [INFO] build -   写入完成
+2026-09-22 16:02:50 [INFO] build - 保存 jsonl 存档：D:\Code\PyCharm\GraduationProject\智能旅游系统-test2\data\knowledge_base\wuhan_v1.jsonl
+2026-09-22 16:02:50 [INFO] build - 
+2026-09-22 16:02:50 [INFO] build - ============================================================
+2026-09-22 16:02:50 [INFO] build - 构建完成
+2026-09-22 16:02:50 [INFO] build -   collection：wuhan_v1
+2026-09-22 16:02:50 [INFO] build -   Chroma 目录：D:\Code\PyCharm\GraduationProject\智能旅游系统-test2\chroma_db\wuhan_v1
+2026-09-22 16:02:50 [INFO] build -   jsonl 存档：D:\Code\PyCharm\GraduationProject\智能旅游系统-test2\data\knowledge_base\wuhan_v1.jsonl
+2026-09-22 16:02:50 [INFO] build - ============================================================
+2026-09-22 17:58:54 [INFO] build - ============================================================
+2026-09-22 17:58:54 [INFO] build - 开始构建知识库：wuhan
+2026-09-22 17:58:54 [INFO] build - ============================================================
+2026-09-22 17:58:54 [INFO] build - 读取：D:\Code\PyCharm\GraduationProject\智能旅游系统-test2\data\processed\wuhan_tagged.json
+2026-09-22 17:58:54 [INFO] build -   读入 250 条 POI
+2026-09-22 17:58:54 [INFO] build - 拼装 text...
+2026-09-22 17:58:54 [INFO] build - 
+2026-09-22 17:58:54 [INFO] build - ============================================================
+2026-09-22 17:58:54 [INFO] build - 样例 text（第一条）：
+2026-09-22 17:58:54 [INFO] build - ============================================================
+2026-09-22 17:58:54 [INFO] build - 【景点名称】武汉大学
+【所在城市】武汉 · 武昌区
+【类别】自然风光
+【地址】珞珈山街道八一路299号
+【评分】5.0
+【开放时间】暂无
+【兴趣标签】历史人文,自然风光
+【适合人群】朋友,摄影爱好者,文艺青年
+【亮点】樱花盛开时的校园，美如画卷
+2026-09-22 17:58:54 [INFO] build - ============================================================
+2026-09-22 17:58:54 [INFO] build - 
+2026-09-22 17:58:54 [INFO] build -   删除旧目录：D:\Code\PyCharm\GraduationProject\智能旅游系统-test2\chroma_db\wuhan_v1
+2026-09-22 17:58:54 [INFO] build -   初始化 embedding 模型：text-embedding-v2
+2026-09-22 17:58:54 [INFO] build -   写入 Chroma（250 条）...
+2026-09-22 17:58:54 [INFO] build -   注意：embedding 调用较慢，请耐心等待
+2026-09-22 17:59:02 [INFO] build -   写入完成
+2026-09-22 17:59:02 [INFO] build - 保存 jsonl 存档：D:\Code\PyCharm\GraduationProject\智能旅游系统-test2\data\knowledge_base\wuhan_v1.jsonl
+2026-09-22 17:59:02 [INFO] build - 
+2026-09-22 17:59:02 [INFO] build - ============================================================
+2026-09-22 17:59:02 [INFO] build - 构建完成
+2026-09-22 17:59:02 [INFO] build -   collection：wuhan_v1
+2026-09-22 17:59:02 [INFO] build -   Chroma 目录：D:\Code\PyCharm\GraduationProject\智能旅游系统-test2\chroma_db\wuhan_v1
+2026-09-22 17:59:02 [INFO] build -   jsonl 存档：D:\Code\PyCharm\GraduationProject\智能旅游系统-test2\data\knowledge_base\wuhan_v1.jsonl
+2026-09-22 17:59:02 [INFO] build - ============================================================
+2026-10-01 23:23:34 [INFO] build - ============================================================
+2026-10-01 23:23:34 [INFO] build - 开始构建知识库：wuhan
+2026-10-01 23:23:34 [INFO] build - ============================================================
+2026-10-01 23:23:34 [ERROR] build - 输入文件不存在：D:\Code\PyCharm\GraduationProject\smart-travel\data\processed\wuhan_tagged.json
+2026-10-01 23:23:34 [ERROR] build - 请先跑 tag 阶段：python -m src.tag.poi_tagger --city wuhan
+2026-10-01 23:24:20 [INFO] build - ============================================================
+2026-10-01 23:24:20 [INFO] build - 开始构建知识库：wuhan
+2026-10-01 23:24:20 [INFO] build - ============================================================
+2026-10-01 23:24:20 [INFO] build - 读取：D:\Code\PyCharm\GraduationProject\smart-travel\data\processed\wuhan_tagged.json
+2026-10-01 23:24:20 [INFO] build -   读入 249 条 POI
+2026-10-01 23:24:20 [INFO] build - 拼装 text...
+2026-10-01 23:24:20 [INFO] build - 
+2026-10-01 23:24:20 [INFO] build - ============================================================
+2026-10-01 23:24:20 [INFO] build - 样例 text（第一条）：
+2026-10-01 23:24:20 [INFO] build - ============================================================
+2026-10-01 23:24:20 [INFO] build - 【景点名称】武汉大学
+【所在城市】武汉 · 武昌区
+【类别】历史人文
+【类型】科教文化服务;学校;高等院校
+【兴趣标签】历史人文,自然风光
+2026-10-01 23:24:20 [INFO] build - ============================================================
+2026-10-01 23:24:20 [INFO] build - 
+2026-10-01 23:24:20 [INFO] build - 样例 metadata（第一条）：
+2026-10-01 23:24:20 [INFO] build - ============================================================
+2026-10-01 23:24:20 [INFO] build -   id: B001B0IZY1
+2026-10-01 23:24:20 [INFO] build -   name: 武汉大学
+2026-10-01 23:24:20 [INFO] build -   city: 武汉
+2026-10-01 23:24:20 [INFO] build -   district: 武昌区
+2026-10-01 23:24:20 [INFO] build -   category: 历史人文
+2026-10-01 23:24:20 [INFO] build -   tags: ['历史人文', '自然风光']
+2026-10-01 23:24:20 [INFO] build -   type: 科教文化服务;学校;高等院校
+2026-10-01 23:24:20 [INFO] build -   rating: 5.0
+2026-10-01 23:24:20 [INFO] build -   opentime: 
+2026-10-01 23:24:20 [INFO] build -   poi_level: 985大学
+2026-10-01 23:24:20 [INFO] build -   address: 珞珈山街道八一路299号
+2026-10-01 23:24:20 [INFO] build -   photos: ["https://store.is.autonavi.com/showpic/5220e1963469b41897bab3c027873afe", "https://store.is.autonavi.com/showpic/00cad34e282eee220000003570534113?type=pic", "https://store.is.autonavi.com/showpic/ea47f2a15ef569980000003096740075?type=pic"]
+2026-10-01 23:24:20 [INFO] build -   lat: 30.536243
+2026-10-01 23:24:20 [INFO] build -   lng: 114.364514
+2026-10-01 23:24:20 [INFO] build -   source: amap
+2026-10-01 23:24:20 [INFO] build - ============================================================
+2026-10-01 23:24:20 [INFO] build - 
+2026-10-01 23:24:20 [INFO] build -   删除旧目录：D:\Code\PyCharm\GraduationProject\smart-travel\chroma_db\wuhan_v1
+2026-10-01 23:24:20 [INFO] build -   初始化 embedding 模型：text-embedding-v2
+2026-10-01 23:24:21 [INFO] build -   写入 Chroma（249 条）...
+2026-10-01 23:24:21 [INFO] build -   注意：embedding 调用较慢，请耐心等待
+2026-10-01 23:28:36 [INFO] build - ============================================================
+2026-10-01 23:28:36 [INFO] build - 开始构建知识库：wuhan
+2026-10-01 23:28:36 [INFO] build - ============================================================
+2026-10-01 23:28:36 [INFO] build - 读取：D:\Code\PyCharm\GraduationProject\smart-travel\data\processed\wuhan_tagged.json
+2026-10-01 23:28:36 [INFO] build -   读入 249 条 POI
+2026-10-01 23:28:36 [INFO] build - 拼装 text...
+2026-10-01 23:28:36 [INFO] build - 
+2026-10-01 23:28:36 [INFO] build - ============================================================
+2026-10-01 23:28:36 [INFO] build - 样例 text（第一条）：
+2026-10-01 23:28:36 [INFO] build - ============================================================
+2026-10-01 23:28:36 [INFO] build - 【景点名称】武汉大学
+【所在城市】武汉 · 武昌区
+【类别】历史人文
+【类型】科教文化服务;学校;高等院校
+【兴趣标签】历史人文,自然风光
+2026-10-01 23:28:36 [INFO] build - ============================================================
+2026-10-01 23:28:36 [INFO] build - 
+2026-10-01 23:28:36 [INFO] build - 样例 metadata（第一条）：
+2026-10-01 23:28:36 [INFO] build - ============================================================
+2026-10-01 23:28:36 [INFO] build -   id: B001B0IZY1
+2026-10-01 23:28:36 [INFO] build -   name: 武汉大学
+2026-10-01 23:28:36 [INFO] build -   city: 武汉
+2026-10-01 23:28:36 [INFO] build -   district: 武昌区
+2026-10-01 23:28:36 [INFO] build -   category: 历史人文
+2026-10-01 23:28:36 [INFO] build -   type: 科教文化服务;学校;高等院校
+2026-10-01 23:28:36 [INFO] build -   rating: 5.0
+2026-10-01 23:28:36 [INFO] build -   opentime: 
+2026-10-01 23:28:36 [INFO] build -   poi_level: 985大学
+2026-10-01 23:28:36 [INFO] build -   address: 珞珈山街道八一路299号
+2026-10-01 23:28:36 [INFO] build -   photos: ["https://store.is.autonavi.com/showpic/5220e1963469b41897bab3c027873afe", "https://store.is.autonavi.com/showpic/00cad34e282eee220000003570534113?type=pic", "https://store.is.autonavi.com/showpic/ea47f2a15ef569980000003096740075?type=pic"]
+2026-10-01 23:28:36 [INFO] build -   lat: 30.536243
+2026-10-01 23:28:36 [INFO] build -   lng: 114.364514
+2026-10-01 23:28:36 [INFO] build -   source: amap
+2026-10-01 23:28:36 [INFO] build -   tags: ['历史人文', '自然风光']
+2026-10-01 23:28:36 [INFO] build - ============================================================
+2026-10-01 23:28:36 [INFO] build - 
+2026-10-01 23:28:36 [INFO] build -   删除旧目录：D:\Code\PyCharm\GraduationProject\smart-travel\chroma_db\wuhan_v1
+2026-10-01 23:28:36 [INFO] build -   初始化 embedding 模型：text-embedding-v2
+2026-10-01 23:28:36 [INFO] build -   写入 Chroma（249 条）...
+2026-10-01 23:28:36 [INFO] build -   注意：embedding 调用较慢，请耐心等待
+2026-10-01 23:28:43 [INFO] build -   写入完成
+2026-10-01 23:28:43 [INFO] build - 保存 jsonl 存档：D:\Code\PyCharm\GraduationProject\smart-travel\data\knowledge_base\wuhan_v1.jsonl
+2026-10-01 23:28:43 [INFO] build - 
+2026-10-01 23:28:43 [INFO] build - ============================================================
+2026-10-01 23:28:43 [INFO] build - 构建完成
+2026-10-01 23:28:43 [INFO] build -   collection：wuhan_v1
+2026-10-01 23:28:43 [INFO] build -   Chroma 目录：D:\Code\PyCharm\GraduationProject\smart-travel\chroma_db\wuhan_v1
+2026-10-01 23:28:43 [INFO] build -   jsonl 存档：D:\Code\PyCharm\GraduationProject\smart-travel\data\knowledge_base\wuhan_v1.jsonl
+2026-10-01 23:28:43 [INFO] build - ============================================================
+2026-10-02 00:42:44 [INFO] build - ============================================================
+2026-10-02 00:42:44 [INFO] build - 开始构建知识库：wuhan
+2026-10-02 00:42:44 [INFO] build - ============================================================
+2026-10-02 00:42:44 [INFO] build - 读取：D:\Code\PyCharm\GraduationProject\smart-travel\data\processed\wuhan_tagged.json
+2026-10-02 00:42:44 [INFO] build -   读入 249 条 POI
+2026-10-02 00:42:44 [INFO] build - 拼装 text...
+2026-10-02 00:42:44 [INFO] build - 
+2026-10-02 00:42:44 [INFO] build - ============================================================
+2026-10-02 00:42:44 [INFO] build - 样例 text（第一条）：
+2026-10-02 00:42:44 [INFO] build - ============================================================
+2026-10-02 00:42:44 [INFO] build - 【景点名称】武汉大学
+【所在城市】武汉 · 武昌区
+【类别】历史人文
+【类型】科教文化服务;学校;高等院校
+【兴趣标签】历史人文,自然风光
+2026-10-02 00:42:44 [INFO] build - ============================================================
+2026-10-02 00:42:44 [INFO] build - 
+2026-10-02 00:42:44 [INFO] build - 样例 metadata（第一条）：
+2026-10-02 00:42:44 [INFO] build - ============================================================
+2026-10-02 00:42:44 [INFO] build -   id: B001B0IZY1
+2026-10-02 00:42:44 [INFO] build -   name: 武汉大学
+2026-10-02 00:42:44 [INFO] build -   city: 武汉
+2026-10-02 00:42:44 [INFO] build -   district: 武昌区
+2026-10-02 00:42:44 [INFO] build -   category: 历史人文
+2026-10-02 00:42:44 [INFO] build -   type: 科教文化服务;学校;高等院校
+2026-10-02 00:42:44 [INFO] build -   rating: 5.0
+2026-10-02 00:42:44 [INFO] build -   opentime: 
+2026-10-02 00:42:44 [INFO] build -   poi_level: 985大学
+2026-10-02 00:42:44 [INFO] build -   address: 珞珈山街道八一路299号
+2026-10-02 00:42:44 [INFO] build -   photos: ["https://store.is.autonavi.com/showpic/5220e1963469b41897bab3c027873afe", "https://store.is.autonavi.com/showpic/00cad34e282eee220000003570534113?type=pic", "https://store.is.autonavi.com/showpic/ea47f2a15ef569980000003096740075?type=pic"]
+2026-10-02 00:42:44 [INFO] build -   lat: 30.536243
+2026-10-02 00:42:44 [INFO] build -   lng: 114.364514
+2026-10-02 00:42:44 [INFO] build -   source: amap
+2026-10-02 00:42:44 [INFO] build -   tags: ['历史人文', '自然风光']
+2026-10-02 00:42:44 [INFO] build - ============================================================
+2026-10-02 00:42:44 [INFO] build - 
+2026-10-02 00:42:44 [INFO] build -   删除旧目录：D:\Code\PyCharm\GraduationProject\smart-travel\chroma_db\wuhan_v1
+2026-10-02 00:42:44 [INFO] build -   初始化 embedding 模型：text-embedding-v2
+2026-10-02 00:42:44 [INFO] build -   写入 Chroma（249 条）...
+2026-10-02 00:42:44 [INFO] build -   注意：embedding 调用较慢，请耐心等待
+2026-10-02 00:42:51 [INFO] build -   写入完成
+2026-10-02 00:42:51 [INFO] build - 保存 jsonl 存档：D:\Code\PyCharm\GraduationProject\smart-travel\data\knowledge_base\wuhan_v1.jsonl
+2026-10-02 00:42:51 [INFO] build - 
+2026-10-02 00:42:51 [INFO] build - 构建 BM25 索引...
+2026-10-02 00:42:51 [INFO] build -   分词中（249 条）...
+2026-10-02 00:42:52 [INFO] build -   构建 BM25 索引...
+2026-10-02 00:42:52 [INFO] build -   BM25 索引已保存：D:\Code\PyCharm\GraduationProject\smart-travel\data\knowledge_base\wuhan_bm25.pkl
+2026-10-02 00:42:52 [INFO] build -   BM25 元数据已保存：D:\Code\PyCharm\GraduationProject\smart-travel\data\knowledge_base\wuhan_bm25_meta.pkl
+2026-10-02 00:42:52 [INFO] build - 
+2026-10-02 00:42:52 [INFO] build - ============================================================
+2026-10-02 00:42:52 [INFO] build - 构建完成
+2026-10-02 00:42:52 [INFO] build -   collection：wuhan_v1
+2026-10-02 00:42:52 [INFO] build -   Chroma 目录：D:\Code\PyCharm\GraduationProject\smart-travel\chroma_db\wuhan_v1
+2026-10-02 00:42:52 [INFO] build -   jsonl 存档：D:\Code\PyCharm\GraduationProject\smart-travel\data\knowledge_base\wuhan_v1.jsonl
+2026-10-02 00:42:52 [INFO] build -   BM25 索引：D:\Code\PyCharm\GraduationProject\smart-travel\data\knowledge_base\wuhan_bm25.pkl
+2026-10-02 00:42:52 [INFO] build -   BM25 元数据：D:\Code\PyCharm\GraduationProject\smart-travel\data\knowledge_base\wuhan_bm25_meta.pkl
+2026-10-02 00:42:52 [INFO] build - ============================================================
+2026-10-02 22:11:13 [INFO] build - ============================================================
+2026-10-02 22:11:13 [INFO] build - 开始构建知识库：wuhan
+2026-10-02 22:11:13 [INFO] build - ============================================================
+2026-10-02 22:11:13 [INFO] build - 读取：D:\Code\PyCharm\GraduationProject\smart-travel\data\processed\wuhan_tagged.json
+2026-10-02 22:11:13 [INFO] build -   读入 249 条 POI
+2026-10-02 22:11:13 [INFO] build - 拼装 text（同时过滤 is_attraction=false）...
+2026-10-02 22:11:13 [INFO] build -   跳过 is_attraction=false 的 POI：44 条
+2026-10-02 22:11:13 [INFO] build -   实际进库：205 条
+2026-10-02 22:11:13 [INFO] build - 
+2026-10-02 22:11:13 [INFO] build - ============================================================
+2026-10-02 22:11:13 [INFO] build - 样例 text（第一条）：
+2026-10-02 22:11:13 [INFO] build - ============================================================
+2026-10-02 22:11:13 [INFO] build - 【景点名称】武汉大学
+【所在城市】武汉 · 武昌区
+【类别】历史人文
+【类型】科教文化服务;学校;高等院校
+【兴趣标签】历史人文,自然风光
+2026-10-02 22:11:13 [INFO] build - ============================================================
+2026-10-02 22:11:13 [INFO] build - 
+2026-10-02 22:11:13 [INFO] build - 样例 metadata（第一条）：
+2026-10-02 22:11:13 [INFO] build - ============================================================
+2026-10-02 22:11:13 [INFO] build -   id: B001B0IZY1
+2026-10-02 22:11:13 [INFO] build -   name: 武汉大学
+2026-10-02 22:11:13 [INFO] build -   city: 武汉
+2026-10-02 22:11:13 [INFO] build -   district: 武昌区
+2026-10-02 22:11:13 [INFO] build -   category: 历史人文
+2026-10-02 22:11:13 [INFO] build -   type: 科教文化服务;学校;高等院校
+2026-10-02 22:11:13 [INFO] build -   rating: 5.0
+2026-10-02 22:11:13 [INFO] build -   opentime: 
+2026-10-02 22:11:13 [INFO] build -   poi_level: 985大学
+2026-10-02 22:11:13 [INFO] build -   address: 珞珈山街道八一路299号
+2026-10-02 22:11:13 [INFO] build -   photos: ["https://store.is.autonavi.com/showpic/5220e1963469b41897bab3c027873afe", "https://store.is.autonavi.com/showpic/00cad34e282eee220000003570534113?type=pic", "https://store.is.autonavi.com/showpic/ea47f2a15ef569980000003096740075?type=pic"]
+2026-10-02 22:11:13 [INFO] build -   lat: 30.536243
+2026-10-02 22:11:13 [INFO] build -   lng: 114.364514
+2026-10-02 22:11:13 [INFO] build -   source: amap
+2026-10-02 22:11:13 [INFO] build -   tags: ['历史人文', '自然风光']
+2026-10-02 22:11:13 [INFO] build - ============================================================
+2026-10-02 22:11:13 [INFO] build - 
+2026-10-02 22:11:13 [INFO] build -   删除旧目录：D:\Code\PyCharm\GraduationProject\smart-travel\chroma_db\wuhan_v1
+2026-10-02 22:11:13 [INFO] build -   初始化 embedding 模型：text-embedding-v2
+2026-10-02 22:11:13 [INFO] build -   写入 Chroma（205 条）...
+2026-10-02 22:11:13 [INFO] build -   注意：embedding 调用较慢，请耐心等待
+2026-10-02 22:11:20 [INFO] build -   写入完成
+2026-10-02 22:11:20 [INFO] build - 保存 jsonl 存档：D:\Code\PyCharm\GraduationProject\smart-travel\data\knowledge_base\wuhan_v1.jsonl
+2026-10-02 22:11:20 [INFO] build - 
+2026-10-02 22:11:20 [INFO] build - 构建 BM25 索引...
+2026-10-02 22:11:20 [INFO] build -   分词中（205 条）...
+2026-10-02 22:11:21 [INFO] build -   构建 BM25 索引...
+2026-10-02 22:11:21 [INFO] build -   BM25 索引已保存：D:\Code\PyCharm\GraduationProject\smart-travel\data\knowledge_base\wuhan_bm25.pkl
+2026-10-02 22:11:21 [INFO] build -   BM25 元数据已保存：D:\Code\PyCharm\GraduationProject\smart-travel\data\knowledge_base\wuhan_bm25_meta.pkl
+2026-10-02 22:11:21 [INFO] build - 
+2026-10-02 22:11:21 [INFO] build - ============================================================
+2026-10-02 22:11:21 [INFO] build - 构建完成
+2026-10-02 22:11:21 [INFO] build -   collection：wuhan_v1
+2026-10-02 22:11:21 [INFO] build -   Chroma 目录：D:\Code\PyCharm\GraduationProject\smart-travel\chroma_db\wuhan_v1
+2026-10-02 22:11:21 [INFO] build -   jsonl 存档：D:\Code\PyCharm\GraduationProject\smart-travel\data\knowledge_base\wuhan_v1.jsonl
+2026-10-02 22:11:21 [INFO] build -   BM25 索引：D:\Code\PyCharm\GraduationProject\smart-travel\data\knowledge_base\wuhan_bm25.pkl
+2026-10-02 22:11:21 [INFO] build -   BM25 元数据：D:\Code\PyCharm\GraduationProject\smart-travel\data\knowledge_base\wuhan_bm25_meta.pkl
+2026-10-02 22:11:21 [INFO] build - ============================================================
+2026-10-04 23:20:45 [INFO] build - ============================================================
+2026-10-04 23:20:45 [INFO] build - 开始构建知识库：wuhan
+2026-10-04 23:20:45 [INFO] build - ============================================================
+2026-10-04 23:20:45 [INFO] build - 读取：D:\Code\PyCharm\GraduationProject\smart-travel\data\processed\wuhan_tagged.json
+2026-10-04 23:20:45 [INFO] build -   读入 248 条 POI
+2026-10-04 23:20:45 [INFO] build - 拼装 text（同时过滤 is_attraction=false）...
+2026-10-04 23:20:45 [INFO] build -   跳过 is_attraction=false 的 POI：63 条
+2026-10-04 23:20:45 [INFO] build -   实际进库：185 条
+2026-10-04 23:20:45 [INFO] build - 
+2026-10-04 23:20:45 [INFO] build - ============================================================
+2026-10-04 23:20:45 [INFO] build - 样例 text（第一条）：
+2026-10-04 23:20:45 [INFO] build - ============================================================
+2026-10-04 23:20:45 [INFO] build - 武汉大学，位于武汉武昌区。类型：学校,高等院校，属于历史人文,自然风光类，可以散步,拍照,赏景,研学。
+珞珈山脚下的知名学府，校园环境优美，兼具人文与自然景观。
+2026-10-04 23:20:45 [INFO] build - ============================================================
+2026-10-04 23:20:45 [INFO] build - 
+2026-10-04 23:20:45 [INFO] build - 样例 metadata（第一条）：
+2026-10-04 23:20:45 [INFO] build - ============================================================
+2026-10-04 23:20:45 [INFO] build -   id: B001B0IZY1
+2026-10-04 23:20:45 [INFO] build -   name: 武汉大学
+2026-10-04 23:20:45 [INFO] build -   city: 武汉
+2026-10-04 23:20:45 [INFO] build -   district: 武昌区
+2026-10-04 23:20:45 [INFO] build -   type: 科教文化服务;学校;高等院校
+2026-10-04 23:20:45 [INFO] build -   rating: 5.0
+2026-10-04 23:20:45 [INFO] build -   opentime: 
+2026-10-04 23:20:45 [INFO] build -   poi_level: 985大学
+2026-10-04 23:20:45 [INFO] build -   address: 珞珈山街道八一路299号
+2026-10-04 23:20:45 [INFO] build -   photos: ["https://store.is.autonavi.com/showpic/5220e1963469b41897bab3c027873afe", "https://store.is.autonavi.com/showpic/00cad34e282eee220000003570534113?type=pic", "https://store.is.autonavi.com/showpic/ea47f2a15ef569980000003096740075?type=pic"]
+2026-10-04 23:20:45 [INFO] build -   description: 珞珈山脚下的知名学府，校园环境优美，兼具人文与自然景观。
+2026-10-04 23:20:45 [INFO] build -   lat: 30.536243
+2026-10-04 23:20:45 [INFO] build -   lng: 114.364514
+2026-10-04 23:20:45 [INFO] build -   source: amap
+2026-10-04 23:20:45 [INFO] build -   tags: ['历史人文', '自然风光']
+2026-10-04 23:20:45 [INFO] build -   behaviors: ['散步', '拍照', '赏景', '研学']
+2026-10-04 23:20:45 [INFO] build - ============================================================
+2026-10-04 23:20:45 [INFO] build - 
+2026-10-04 23:20:45 [INFO] build -   删除旧目录：D:\Code\PyCharm\GraduationProject\smart-travel\chroma_db\wuhan_v1
+2026-10-04 23:20:45 [INFO] build -   初始化 embedding 模型：text-embedding-v2
+2026-10-04 23:20:46 [INFO] build -   写入 Chroma（185 条）...
+2026-10-04 23:20:46 [INFO] build -   注意：embedding 调用较慢，请耐心等待
+2026-10-04 23:20:51 [INFO] build -   写入完成
+2026-10-04 23:20:51 [INFO] build - 保存 jsonl 存档：D:\Code\PyCharm\GraduationProject\smart-travel\data\knowledge_base\wuhan_v1.jsonl
+2026-10-04 23:20:51 [INFO] build - 
+2026-10-04 23:20:51 [INFO] build - 构建 BM25 索引...
+2026-10-04 23:20:51 [INFO] build -   分词中（185 条）...
+2026-10-04 23:20:51 [INFO] build -   构建 BM25 索引...
+2026-10-04 23:20:51 [INFO] build -   BM25 索引已保存：D:\Code\PyCharm\GraduationProject\smart-travel\data\knowledge_base\wuhan_bm25.pkl
+2026-10-04 23:20:51 [INFO] build -   BM25 元数据已保存：D:\Code\PyCharm\GraduationProject\smart-travel\data\knowledge_base\wuhan_bm25_meta.pkl
+2026-10-04 23:20:51 [INFO] build - 
+2026-10-04 23:20:51 [INFO] build - ============================================================
+2026-10-04 23:20:51 [INFO] build - 构建完成
+2026-10-04 23:20:51 [INFO] build -   collection：wuhan_v1
+2026-10-04 23:20:51 [INFO] build -   Chroma 目录：D:\Code\PyCharm\GraduationProject\smart-travel\chroma_db\wuhan_v1
+2026-10-04 23:20:51 [INFO] build -   jsonl 存档：D:\Code\PyCharm\GraduationProject\smart-travel\data\knowledge_base\wuhan_v1.jsonl
+2026-10-04 23:20:51 [INFO] build -   BM25 索引：D:\Code\PyCharm\GraduationProject\smart-travel\data\knowledge_base\wuhan_bm25.pkl
+2026-10-04 23:20:51 [INFO] build -   BM25 元数据：D:\Code\PyCharm\GraduationProject\smart-travel\data\knowledge_base\wuhan_bm25_meta.pkl
+2026-10-04 23:20:51 [INFO] build - ============================================================
+2026-10-04 23:41:24 [INFO] build - ============================================================
+2026-10-04 23:41:24 [INFO] build - 开始构建知识库：wuhan
+2026-10-04 23:41:24 [INFO] build - ============================================================
+2026-10-04 23:41:24 [INFO] build - 读取：D:\Code\PyCharm\GraduationProject\smart-travel\data\processed\wuhan_tagged.json
+2026-10-04 23:41:24 [INFO] build -   读入 246 条 POI
+2026-10-04 23:41:24 [INFO] build - 拼装 text（同时过滤 is_attraction=false）...
+2026-10-04 23:41:24 [INFO] build -   跳过 is_attraction=false 的 POI：65 条
+2026-10-04 23:41:24 [INFO] build -   实际进库：181 条
+2026-10-04 23:41:24 [INFO] build - 
+2026-10-04 23:41:24 [INFO] build - ============================================================
+2026-10-04 23:41:24 [INFO] build - 样例 text（第一条）：
+2026-10-04 23:41:24 [INFO] build - ============================================================
+2026-10-04 23:41:24 [INFO] build - 武汉大学，位于武汉武昌区。类型：学校,高等院校，属于历史人文,自然风光类，可以散步,拍照,研学。
+珞珈山下的知名学府，校园环境优美，是武汉著名的历史人文与自然景观地。
+2026-10-04 23:41:24 [INFO] build - ============================================================
+2026-10-04 23:41:24 [INFO] build - 
+2026-10-04 23:41:24 [INFO] build - 样例 metadata（第一条）：
+2026-10-04 23:41:24 [INFO] build - ============================================================
+2026-10-04 23:41:24 [INFO] build -   id: B001B0IZY1
+2026-10-04 23:41:24 [INFO] build -   name: 武汉大学
+2026-10-04 23:41:24 [INFO] build -   city: 武汉
+2026-10-04 23:41:24 [INFO] build -   district: 武昌区
+2026-10-04 23:41:24 [INFO] build -   type: 科教文化服务;学校;高等院校
+2026-10-04 23:41:24 [INFO] build -   rating: 5.0
+2026-10-04 23:41:24 [INFO] build -   opentime: 
+2026-10-04 23:41:24 [INFO] build -   poi_level: 985大学
+2026-10-04 23:41:24 [INFO] build -   address: 珞珈山街道八一路299号
+2026-10-04 23:41:24 [INFO] build -   photos: ["https://store.is.autonavi.com/showpic/5220e1963469b41897bab3c027873afe", "https://store.is.autonavi.com/showpic/00cad34e282eee220000003570534113?type=pic", "https://store.is.autonavi.com/showpic/ea47f2a15ef569980000003096740075?type=pic"]
+2026-10-04 23:41:24 [INFO] build -   description: 珞珈山下的知名学府，校园环境优美，是武汉著名的历史人文与自然景观地。
+2026-10-04 23:41:24 [INFO] build -   lat: 30.536243
+2026-10-04 23:41:24 [INFO] build -   lng: 114.364514
+2026-10-04 23:41:24 [INFO] build -   source: amap
+2026-10-04 23:41:24 [INFO] build -   tags: ['历史人文', '自然风光']
+2026-10-04 23:41:24 [INFO] build -   behaviors: ['散步', '拍照', '研学']
+2026-10-04 23:41:24 [INFO] build - ============================================================
+2026-10-04 23:41:24 [INFO] build - 
+2026-10-04 23:41:24 [INFO] build -   删除旧目录：D:\Code\PyCharm\GraduationProject\smart-travel\chroma_db\wuhan_v1
+2026-10-04 23:41:24 [INFO] build -   初始化 embedding 模型：text-embedding-v2
+2026-10-04 23:41:24 [INFO] build -   写入 Chroma（181 条）...
+2026-10-04 23:41:24 [INFO] build -   注意：embedding 调用较慢，请耐心等待
+2026-10-04 23:41:29 [INFO] build -   写入完成
+2026-10-04 23:41:29 [INFO] build - 保存 jsonl 存档：D:\Code\PyCharm\GraduationProject\smart-travel\data\knowledge_base\wuhan_v1.jsonl
+2026-10-04 23:41:29 [INFO] build - 
+2026-10-04 23:41:29 [INFO] build - 构建 BM25 索引...
+2026-10-04 23:41:29 [INFO] build -   分词中（181 条）...
+2026-10-04 23:41:30 [INFO] build -   构建 BM25 索引...
+2026-10-04 23:41:30 [INFO] build -   BM25 索引已保存：D:\Code\PyCharm\GraduationProject\smart-travel\data\knowledge_base\wuhan_bm25.pkl
+2026-10-04 23:41:30 [INFO] build -   BM25 元数据已保存：D:\Code\PyCharm\GraduationProject\smart-travel\data\knowledge_base\wuhan_bm25_meta.pkl
+2026-10-04 23:41:30 [INFO] build - 
+2026-10-04 23:41:30 [INFO] build - ============================================================
+2026-10-04 23:41:30 [INFO] build - 构建完成
+2026-10-04 23:41:30 [INFO] build -   collection：wuhan_v1
+2026-10-04 23:41:30 [INFO] build -   Chroma 目录：D:\Code\PyCharm\GraduationProject\smart-travel\chroma_db\wuhan_v1
+2026-10-04 23:41:30 [INFO] build -   jsonl 存档：D:\Code\PyCharm\GraduationProject\smart-travel\data\knowledge_base\wuhan_v1.jsonl
+2026-10-04 23:41:30 [INFO] build -   BM25 索引：D:\Code\PyCharm\GraduationProject\smart-travel\data\knowledge_base\wuhan_bm25.pkl
+2026-10-04 23:41:30 [INFO] build -   BM25 元数据：D:\Code\PyCharm\GraduationProject\smart-travel\data\knowledge_base\wuhan_bm25_meta.pkl
+2026-10-04 23:41:30 [INFO] build - ============================================================
+2026-10-04 23:54:19 [INFO] build - ============================================================
+2026-10-04 23:54:19 [INFO] build - 开始构建知识库：wuhan
+2026-10-04 23:54:19 [INFO] build - ============================================================
+2026-10-04 23:54:19 [INFO] build - 读取：D:\Code\PyCharm\GraduationProject\smart-travel\data\processed\wuhan_tagged.json
+2026-10-04 23:54:19 [INFO] build -   读入 246 条 POI
+2026-10-04 23:54:19 [INFO] build - 拼装 text（同时过滤 is_attraction=false）...
+2026-10-04 23:54:19 [INFO] build -   跳过 is_attraction=false 的 POI：65 条
+2026-10-04 23:54:19 [INFO] build -   实际进库：181 条
+2026-10-04 23:54:19 [INFO] build - 
+2026-10-04 23:54:19 [INFO] build - ============================================================
+2026-10-04 23:54:19 [INFO] build - 样例 text（第一条）：
+2026-10-04 23:54:19 [INFO] build - ============================================================
+2026-10-04 23:54:19 [INFO] build - 武汉大学，位于武汉武昌区。类型：学校,高等院校，属于历史人文,自然风光类，可以散步,拍照,研学。
+珞珈山下的知名学府，校园环境优美，是武汉著名的历史人文与自然景观地。
+2026-10-04 23:54:19 [INFO] build - ============================================================
+2026-10-04 23:54:19 [INFO] build - 
+2026-10-04 23:54:19 [INFO] build - 样例 metadata（第一条）：
+2026-10-04 23:54:19 [INFO] build - ============================================================
+2026-10-04 23:54:19 [INFO] build -   id: B001B0IZY1
+2026-10-04 23:54:19 [INFO] build -   name: 武汉大学
+2026-10-04 23:54:19 [INFO] build -   city: 武汉
+2026-10-04 23:54:19 [INFO] build -   district: 武昌区
+2026-10-04 23:54:19 [INFO] build -   type: 科教文化服务;学校;高等院校
+2026-10-04 23:54:19 [INFO] build -   rating: 5.0
+2026-10-04 23:54:19 [INFO] build -   opentime: 
+2026-10-04 23:54:19 [INFO] build -   poi_level: 985大学
+2026-10-04 23:54:19 [INFO] build -   address: 珞珈山街道八一路299号
+2026-10-04 23:54:19 [INFO] build -   photos: ["https://store.is.autonavi.com/showpic/5220e1963469b41897bab3c027873afe", "https://store.is.autonavi.com/showpic/00cad34e282eee220000003570534113?type=pic", "https://store.is.autonavi.com/showpic/ea47f2a15ef569980000003096740075?type=pic"]
+2026-10-04 23:54:19 [INFO] build -   description: 珞珈山下的知名学府，校园环境优美，是武汉著名的历史人文与自然景观地。
+2026-10-04 23:54:19 [INFO] build -   lat: 30.536243
+2026-10-04 23:54:19 [INFO] build -   lng: 114.364514
+2026-10-04 23:54:19 [INFO] build -   source: amap
+2026-10-04 23:54:19 [INFO] build -   tags: ['历史人文', '自然风光']
+2026-10-04 23:54:19 [INFO] build -   behaviors: ['散步', '拍照', '研学']
+2026-10-04 23:54:19 [INFO] build - ============================================================
+2026-10-04 23:54:19 [INFO] build - 
+2026-10-04 23:54:19 [INFO] build -   删除旧目录：D:\Code\PyCharm\GraduationProject\smart-travel\chroma_db\wuhan_v1
+2026-10-04 23:54:19 [INFO] build -   初始化 embedding 模型：text-embedding-v2
+2026-10-04 23:54:20 [INFO] build -   写入 Chroma（181 条）...
+2026-10-04 23:54:20 [INFO] build -   注意：embedding 调用较慢，请耐心等待
+2026-10-04 23:54:25 [INFO] build -   写入完成
+2026-10-04 23:54:25 [INFO] build - 保存 jsonl 存档：D:\Code\PyCharm\GraduationProject\smart-travel\data\knowledge_base\wuhan_v1.jsonl
+2026-10-04 23:54:25 [INFO] build - 
+2026-10-04 23:54:25 [INFO] build - 构建 BM25 索引...
+2026-10-04 23:54:25 [INFO] build -   分词中（181 条）...
+2026-10-04 23:54:25 [INFO] build -   构建 BM25 索引...
+2026-10-04 23:54:25 [INFO] build -   BM25 索引已保存：D:\Code\PyCharm\GraduationProject\smart-travel\data\knowledge_base\wuhan_bm25.pkl
+2026-10-04 23:54:25 [INFO] build -   BM25 元数据已保存：D:\Code\PyCharm\GraduationProject\smart-travel\data\knowledge_base\wuhan_bm25_meta.pkl
+2026-10-04 23:54:25 [INFO] build - 
+2026-10-04 23:54:25 [INFO] build - ============================================================
+2026-10-04 23:54:25 [INFO] build - 构建完成
+2026-10-04 23:54:25 [INFO] build -   collection：wuhan_v1
+2026-10-04 23:54:25 [INFO] build -   Chroma 目录：D:\Code\PyCharm\GraduationProject\smart-travel\chroma_db\wuhan_v1
+2026-10-04 23:54:25 [INFO] build -   jsonl 存档：D:\Code\PyCharm\GraduationProject\smart-travel\data\knowledge_base\wuhan_v1.jsonl
+2026-10-04 23:54:25 [INFO] build -   BM25 索引：D:\Code\PyCharm\GraduationProject\smart-travel\data\knowledge_base\wuhan_bm25.pkl
+2026-10-04 23:54:25 [INFO] build -   BM25 元数据：D:\Code\PyCharm\GraduationProject\smart-travel\data\knowledge_base\wuhan_bm25_meta.pkl
+2026-10-04 23:54:25 [INFO] build - ============================================================

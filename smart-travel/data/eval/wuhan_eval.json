@@ -1,47 +1,72 @@
 {
-  "city": "武汉",
-  "version": "v1",
-  "created_at": "2025-01-XX",
+  "city": "wuhan",
+  "city_name": "武汉",
+  "version": "v2",
+  "description": "纯语义检索评估集。不测附近、不测多意图，只测'给定一句语义 query，能否召回对的景点'。",
   "cases": [
     {
       "id": "wuhan_hist_001",
-      "query": "武汉 历史人文 古建筑 名楼",
+      "query": "武汉有哪些历史人文景点",
       "type": "interest",
-      "filters": {"city": "武汉"},
-      "expected_names": ["黄鹤楼", "晴川阁", "古德寺", "归元禅寺"],
-      "must_not_include": ["户部巷", "楚河汉街", "光谷步行街"],
-      "notes": "历史类 query 不应返回纯美食或购物 POI",
-      "difficulty": "easy"
+      "difficulty": "easy",
+      "expected_names": ["黄鹤楼", "湖北省博物馆", "辛亥革命博物院", "晴川阁"],
+      "must_not_include": []
+    },
+    {
+      "id": "wuhan_nature_001",
+      "query": "武汉自然风光推荐",
+      "type": "interest",
+      "difficulty": "easy",
+      "expected_names": ["东湖", "磨山", "沙湖公园", "解放公园"],
+      "must_not_include": []
     },
     {
       "id": "wuhan_food_001",
-      "query": "武汉 美食探店 小吃街 特色小吃",
+      "query": "武汉小吃街哪里好",
       "type": "interest",
-      "filters": {"city": "武汉"},
-      "expected_names": ["户部巷", "吉庆街", "粮道街", "万松园"],
-      "must_not_include": ["黄鹤楼", "湖北省博物馆"],
-      "notes": "美食类 query 不应返回纯历史景点",
-      "difficulty": "easy"
+      "difficulty": "easy",
+      "expected_names": ["户部巷", "粮道街", "吉庆街", "万松园"],
+      "must_not_include": []
     },
     {
-      "id": "wuhan_landmark_001",
-      "query": "黄鹤楼附近还有什么景点",
-      "type": "landmark",
-      "filters": {"city": "武汉"},
-      "expected_names": ["晴川阁", "户部巷", "长江大桥", "昙华林"],
-      "must_not_include": [],
-      "notes": "追问类 query，期望返回地理邻近的景点",
-      "difficulty": "medium"
+      "id": "wuhan_night_001",
+      "query": "武汉晚上有什么好玩的",
+      "type": "interest",
+      "difficulty": "medium",
+      "expected_names": ["汉口江滩", "武昌江滩", "长江夜游", "楚河汉街"],
+      "must_not_include": []
     },
     {
-      "id": "wuhan_combo_001",
-      "query": "武汉 历史人文 加 美食 一天怎么安排",
-      "type": "combo",
-      "filters": {"city": "武汉"},
-      "expected_names": ["黄鹤楼", "户部巷", "昙华林", "粮道街"],
-      "must_not_include": ["光谷步行街"],
-      "notes": "跨兴趣组合，期望历史 + 美食混合返回",
-      "difficulty": "hard"
+      "id": "wuhan_culture_001",
+      "query": "武汉适合了解近代史的地方",
+      "type": "interest",
+      "difficulty": "hard",
+      "expected_names": ["辛亥革命博物院", "江汉关博物馆", "黎黄陂路", "昙华林"],
+      "must_not_include": []
+    },
+    {
+      "id": "wuhan_family_001",
+      "query": "带小孩去武汉适合去哪",
+      "type": "interest",
+      "difficulty": "hard",
+      "expected_names": ["武汉动物园", "武汉欢乐谷", "极地海洋度假区", "武汉园博园"],
+      "must_not_include": []
+    },
+    {
+      "id": "wuhan_temple_001",
+      "query": "武汉有哪些寺庙",
+      "type": "interest",
+      "difficulty": "easy",
+      "expected_names": ["归元禅寺", "宝通禅寺", "古德寺", "长春观"],
+      "must_not_include": []
+    },
+    {
+      "id": "wuhan_photo_001",
+      "query": "武汉适合拍照打卡的地方",
+      "type": "interest",
+      "difficulty": "hard",
+      "expected_names": ["昙华林", "黎黄陂路", "凌波门", "黄鹤楼红墙"],
+      "must_not_include": []
     }
   ]
 }

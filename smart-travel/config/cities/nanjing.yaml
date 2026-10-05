@@ -1,0 +1,46 @@
+# config/cities/nanjing.yaml
+#
+# 南京配置。结构说明见 wuhan.yaml。
+# ============================================================
+
+name: 南京
+region: 南京
+
+transport_hubs: [南京站, 南京南站, 禄口机场]
+
+stay_districts: [玄武区, 秦淮区, 鼓楼区, 建邺区, 栖霞区, 雨花台区, 江宁区]
+
+crawl:
+  page_size_core: 5
+  page_size_category: 20
+  max_pages_core: 1
+  max_pages_category: 2
+
+core_spots:
+  历史人文: [中山陵, 明孝陵, 总统府, 夫子庙, 秦淮河, 南京博物院, 侵华日军遇难同胞纪念馆, 朝天宫, 鸡鸣寺, 老门东]
+  自然风光: [紫金山, 玄武湖, 栖霞山, 莫愁湖, 清凉山]
+  美食探店: [夫子庙美食街, 老门东, 狮子桥]
+  购物休闲: [新街口, 德基广场]
+  夜生活: [秦淮河夜游, 夫子庙灯会]
+
+category_words: [风景区, 博物馆, 寺庙, 公园, 步行街]
+
+clean_rules:
+  hard_exclude_names: [停车场, 售票处, 游客中心, 服务中心, 安检, 地铁站, 公交站, 出入口, 派出所, 公共厕所, 卫生间]
+  hard_exclude_types: [地铁站, 公交车站, 停车场, 售票处, 公共厕所, 住宿服务]
+  soft_exclude_types: [学校, 科教文化服务, 政府机关, 公司企业, 商务住宅, 金融保险]
+  soft_exempt_keywords: [博物馆, 纪念馆, 旧址, 遗址, 故居, 公园, 大学, 学院, 寺, 庙, 塔, 楼, 景区, 风景区, 文化, 艺术]
+  brand_store_pattern: "\\(.*(店|分店|特许).*\\)"
+  sub_facility_suffixes: [殿, 堂, 亭, 塔, 楼, 院, 阁, 池, 林, 台, 宫, 像, 雕像, 铜像]
+  # 南京特有：中山陵景区内的子设施
+  local_exclude: [音乐台, 流徽榭, 藏经楼]
+
+spatial:
+  cluster_k: 12
+  cluster_max_size: 5
+  cluster_max_dist: 8.0
+  min_pts_per_day: 6
+  urban_districts: [玄武区, 秦淮区, 鼓楼区, 建邺区, 栖霞区, 雨花台区]
+
+limits:
+  max_pois: 400

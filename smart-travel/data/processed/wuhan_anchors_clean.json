@@ -1,0 +1,110 @@
+[
+  {
+    "name": "武汉站",
+    "lat": 30.606981,
+    "lng": 114.424338,
+    "type": "transport_hub"
+  },
+  {
+    "name": "汉口站",
+    "lat": 30.618527,
+    "lng": 114.254807,
+    "type": "transport_hub"
+  },
+  {
+    "name": "武昌站",
+    "lat": 30.528545,
+    "lng": 114.317603,
+    "type": "transport_hub"
+  },
+  {
+    "name": "武汉东站",
+    "lat": 30.486207,
+    "lng": 114.430331,
+    "type": "transport_hub"
+  },
+  {
+    "name": "天河机场",
+    "lat": 30.776449,
+    "lng": 114.221917,
+    "type": "transport_hub"
+  },
+  {
+    "name": "武昌区",
+    "lat": 30.55418,
+    "lng": 114.316464,
+    "type": "stay_district"
+  },
+  {
+    "name": "汉阳区",
+    "lat": 30.554287,
+    "lng": 114.21859,
+    "type": "stay_district"
+  },
+  {
+    "name": "青山区",
+    "lat": 30.639842,
+    "lng": 114.385424,
+    "type": "stay_district"
+  },
+  {
+    "name": "洪山区",
+    "lat": 30.500642,
+    "lng": 114.342664,
+    "type": "stay_district"
+  },
+  {
+    "name": "汉南区",
+    "lat": 30.308776,
+    "lng": 114.084582,
+    "type": "stay_district"
+  },
+  {
+    "name": "蔡甸区",
+    "lat": 30.536395,
+    "lng": 114.087279,
+    "type": "stay_district"
+  },
+  {
+    "name": "江夏区",
+    "lat": 30.37558,
+    "lng": 114.320884,
+    "type": "stay_district"
+  },
+  {
+    "name": "黄陂区",
+    "lat": 30.882305,
+    "lng": 114.375698,
+    "type": "stay_district"
+  },
+  {
+    "name": "新洲区",
+    "lat": 30.841304,
+    "lng": 114.801284,
+    "type": "stay_district"
+  },
+  {
+    "name": "江岸区",
+    "lat": 30.633093,
+    "lng": 114.282987,
+    "type": "stay_district"
+  },
+  {
+    "name": "江汉区",
+    "lat": 30.601129,
+    "lng": 114.270763,
+    "type": "stay_district"
+  },
+  {
+    "name": "硚口区",
+    "lat": 30.582559,
+    "lng": 114.214746,
+    "type": "stay_district"
+  },
+  {
+    "name": "东西湖区",
+    "lat": 30.620079,
+    "lng": 114.136295,
+    "type": "stay_district"
+  }
+]

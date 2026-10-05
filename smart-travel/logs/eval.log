@@ -54,3 +54,52 @@
 2026-09-21 01:14:29 [INFO] eval - 城市名：武汉
 2026-09-21 01:14:29 [INFO] eval - top_k：10
 2026-09-21 01:14:30 [INFO] eval - 报告已保存：D:\Code\PyCharm\GraduationProject\智能旅游系统-test2\data\eval\reports\wuhan_report.json
+2026-09-21 14:44:10 [INFO] eval - ============================================================
+2026-09-21 14:44:10 [INFO] eval - 开始评估：wuhan
+2026-09-21 14:44:10 [INFO] eval - ============================================================
+2026-09-21 14:44:10 [INFO] eval - 评估集：4 条用例
+2026-09-21 14:44:10 [INFO] eval - 城市名：武汉
+2026-09-21 14:44:10 [INFO] eval - top_k：10
+2026-09-21 14:44:11 [INFO] eval - 报告已保存：D:\Code\PyCharm\GraduationProject\智能旅游系统-test2\data\eval\reports\wuhan_report.json
+2026-09-21 14:49:09 [INFO] eval - ============================================================
+2026-09-21 14:49:09 [INFO] eval - 开始评估：wuhan
+2026-09-21 14:49:09 [INFO] eval - ============================================================
+2026-09-21 14:49:09 [INFO] eval - 评估集：12 条用例
+2026-09-21 14:49:09 [INFO] eval - 城市名：武汉
+2026-09-21 14:49:09 [INFO] eval - top_k：10
+2026-09-21 14:49:12 [INFO] eval - 报告已保存：D:\Code\PyCharm\GraduationProject\智能旅游系统-test2\data\eval\reports\wuhan_report.json
+2026-09-22 17:37:57 [INFO] eval - ============================================================
+2026-09-22 17:37:57 [INFO] eval - 开始评估：wuhan
+2026-09-22 17:37:57 [INFO] eval - ============================================================
+2026-09-22 17:37:57 [INFO] eval - 评估集：12 条用例
+2026-09-22 17:37:57 [INFO] eval - 城市名：武汉
+2026-09-22 17:37:57 [INFO] eval - top_k：10
+2026-09-22 17:37:59 [INFO] eval - 报告已保存：D:\Code\PyCharm\GraduationProject\智能旅游系统-test2\data\eval\reports\wuhan_report.json
+2026-10-02 22:14:47 [INFO] eval - ============================================================
+2026-10-02 22:14:47 [INFO] eval - 开始评估：wuhan
+2026-10-02 22:14:47 [INFO] eval - ============================================================
+2026-10-02 22:14:47 [INFO] eval - 评估集：12 条用例
+2026-10-02 22:14:47 [INFO] eval - 城市名：武汉
+2026-10-02 22:14:47 [INFO] eval - top_k：10
+2026-10-02 22:14:50 [INFO] eval - 报告已保存：D:\Code\PyCharm\GraduationProject\smart-travel\data\eval\reports\wuhan_report.json
+2026-10-02 22:58:06 [INFO] eval - ============================================================
+2026-10-02 22:58:06 [INFO] eval - 开始评估：wuhan
+2026-10-02 22:58:06 [INFO] eval - ============================================================
+2026-10-02 22:58:06 [INFO] eval - 评估集：10 条用例
+2026-10-02 22:58:06 [INFO] eval - 城市名：武汉
+2026-10-02 22:58:06 [INFO] eval - top_k：10
+2026-10-02 22:58:09 [INFO] eval - 报告已保存：D:\Code\PyCharm\GraduationProject\smart-travel\data\eval\reports\wuhan_report.json
+2026-10-02 23:13:06 [INFO] eval - ============================================================
+2026-10-02 23:13:06 [INFO] eval - 开始评估：wuhan
+2026-10-02 23:13:06 [INFO] eval - ============================================================
+2026-10-02 23:13:06 [INFO] eval - 评估集：10 条用例
+2026-10-02 23:13:06 [INFO] eval - 城市名：武汉
+2026-10-02 23:13:06 [INFO] eval - top_k：10
+2026-10-02 23:13:08 [INFO] eval - 报告已保存：D:\Code\PyCharm\GraduationProject\smart-travel\data\eval\reports\wuhan_report.json
+2026-10-02 23:16:53 [INFO] eval - ============================================================
+2026-10-02 23:16:53 [INFO] eval - 开始评估：wuhan
+2026-10-02 23:16:53 [INFO] eval - ============================================================
+2026-10-02 23:16:53 [INFO] eval - 评估集：8 条用例
+2026-10-02 23:16:53 [INFO] eval - 城市名：武汉
+2026-10-02 23:16:53 [INFO] eval - top_k：10
+2026-10-02 23:16:54 [INFO] eval - 报告已保存：D:\Code\PyCharm\GraduationProject\smart-travel\data\eval\reports\wuhan_report.json

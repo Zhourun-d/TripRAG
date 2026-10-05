@@ -1,18 +1,28 @@
 """
 POI 清洗模块。
 
-职责（大白话）：
-1. 去重：同一个景点被抓多次，只留一条
-2. 两层过滤：硬过滤（不可豁免）+ 软过滤（可豁免）
-3. 整理格式：把高德给的数据，整理成我们要的样子
-4. 补齐字段：比如 category（大类），从 type 推断
+职责：
+1. 清洗景点：去重 → 过滤 → 字段规范化 → 截断
+2. 清洗锚点：拆分经纬度，供空间排序用
 
-两层过滤的设计：
-- 硬过滤：地铁站、停车场、售票处这种，绝对不可能是景点，命中就干掉
-- 软过滤：学校、政府机关这种，可能是景点（如武汉大学），需要豁免机制
+两类数据的区别：
+- 景点：需要过滤（黑名单）、打标签、进向量库
+- 锚点：不需要过滤（它们本来就是交通枢纽/住宿区），只需拆坐标
 
-输入：data/raw/{city}_pois.json
-输出：data/processed/{city}_clean.json
+过滤规则全部来自 config/cities/{city}.yaml 的 clean_rules 块，
+本文件不含硬编码黑名单。改规则只改 yaml，不动代码。
+
+输入：
+  data/raw/{city}_pois.json      - 景点原始数据
+  data/raw/{city}_anchors.json   - 锚点原始数据
+输出：
+  data/processed/{city}_clean.json          - 清洗后景点
+  data/processed/{city}_anchors_clean.json  - 清洗后锚点
+
+注意：
+  clean 阶段不产生 tags / behaviors / description / is_attraction，
+  这四个字段由 tag 阶段填充。
+  clean 阶段只负责"把 raw 数据规范化成 schema 里 clean 阶段应有的字段"。
 """
 
 import argparse
@@ -20,129 +30,112 @@ import json
 import re
 from collections import Counter
 
-from src.config import get_city_config, raw_path, clean_path, list_cities
+from src.config import (
+    get_city_config,
+    get_clean_rules,
+    raw_path,
+    anchors_raw_path,
+    clean_path,
+    anchors_clean_path,
+    list_cities,
+)
 from src.logger import get_logger
 
 logger = get_logger("clean")
 
 
 # ============================================================
-# 第一层：硬过滤（绝对黑名单，不可豁免）
+# 过滤判断（单一入口）
 # ============================================================
-# 这些词命中，无论什么情况都干掉。
-# 理由：确实没有景点叫这些名字。
-HARD_EXCLUDE_NAMES = [
-    "停车场", "售票处", "游客中心", "服务中心", "安检",
-    "地铁站", "公交站", "出入口", "派出所",
-    "公共厕所", "卫生间",
-]
-
-HARD_EXCLUDE_TYPES = [
-    "地铁站", "公交车站", "停车场", "售票处",
-    "公共厕所", "住宿服务",
-]
-
-
-# ============================================================
-# 第二层：软过滤（可豁免黑名单）
-# ============================================================
-# 这些词命中，要看名字里有没有"豁免关键词"。
-# 有，就保留；没有，就干掉。
-#
-# 例：
-#   "武汉大学" type 含"学校"，但名字含"大学" → 保留
-#   "XX小学" type 含"学校"，名字不含豁免词 → 干掉
-SOFT_EXCLUDE_TYPES = [
-    "学校", "科教文化服务",     # 武大是景点，XX 小学不是
-    "政府机关",                 # 江汉关博物馆可能是旧址
-    "公司企业",                 # 有些遗址被标注成企业
-    "商务住宅",                 # 有些名人故居被标注成住宅
-    "金融保险",                 # 老银行、老钱庄可能是景点
-]
-
-# 软过滤的豁免关键词：名字含这些词的，即使命中软黑名单也保留
-SOFT_EXEMPT_KEYWORDS = [
-    "博物馆", "纪念馆", "旧址", "遗址", "故居",
-    "公园", "大学", "学院", "寺", "庙", "塔", "楼",
-    "景区", "风景区", "文化", "艺术",
-]
-
-
-# ============================================================
-# 工具函数
-# ============================================================
-def is_valid_poi(poi: dict, local_exclude: list, core_spots_flat: set = None) -> bool:
+def is_valid_poi(poi: dict, rules: dict, core_spots_flat: set) -> tuple[bool, str]:
     """
-    判断一条 POI 是否值得保留。
+    判断一条 POI 是否保留，并返回原因。
 
-    规则优先级（从上到下）：
-    1. 完全匹配核心景点 → 保留（最强豁免，跳过一切）
-    2. 硬过滤：名字/类型命中硬黑名单 → 干掉
-    3. 有 _interest_group（被核心词抓到）→ 保留
-    4. 软过滤：类型命中软黑名单，且名字不含豁免关键词 → 干掉
-    5. 品牌店格式（如"黄鹤楼(香港路特许店)"）→ 干掉
-    6. 子设施格式（如"归元禅寺-大雄宝殿"）→ 干掉
-    7. 城市特有黑名单 → 干掉
+    规则优先级（从上到下，命中即返回）：
+        0. 硬过滤        - 命中即干掉，不可被任何豁免绕过
+        1. 核心景点完全匹配 - 豁免软过滤，直接保留
+        2. 被核心词抓到    - 豁免软过滤，直接保留
+        3. 软过滤        - 名字含豁免词则保留，否则干掉
+        4. 品牌店格式     - 干掉
+        5. 子设施格式     - 干掉
+        6. 城市特有黑名单  - 干掉
+        7. 通过
 
-    返回 True 表示保留，False 表示干掉。
+    Args:
+        poi: 单条 POI 字典
+        rules: clean_rules 配置（从 yaml 读）
+        core_spots_flat: 核心景点名的集合（拍平后的，用于完全匹配豁免）
+
+    Returns:
+        (keep, reason)
+        keep: True 保留，False 干掉
+        reason: 过滤原因，用于统计
     """
     name = poi.get("name", "")
     poi_type = poi.get("type", "")
 
-    # ---- 规则 0：完全匹配核心景点 → 最强豁免 ----
-    if core_spots_flat and name in core_spots_flat:
-        return True
+    # ---- 规则 0：硬过滤（最高优先级，不可豁免）----
+    # 注意：必须在任何豁免之前，否则"归元禅寺停车场"会因核心词被放过
+    if any(kw in name for kw in rules.get("hard_exclude_names", [])):
+        return False, "hard_exclude"
+    if any(kw in poi_type for kw in rules.get("hard_exclude_types", [])):
+        return False, "hard_exclude"
 
-    # ---- 规则 1：硬过滤 ----
-    if any(kw in name for kw in HARD_EXCLUDE_NAMES):
-        return False
-    if any(kw in poi_type for kw in HARD_EXCLUDE_TYPES):
-        return False
+    # ---- 规则 1：完全匹配核心景点 → 豁免软过滤 ----
+    # 核心景点是我们明确要的，无论类型是什么都保留
+    if name in core_spots_flat:
+        return True, "core_spot"
 
-    # ---- 规则 2：被核心词抓到的 → 保留 ----
-    # 走到这一步说明没命中硬过滤，可以放心保留
+    # ---- 规则 2：被核心词抓到 → 豁免软过滤 ----
+    # _interest_group 是 crawl 阶段打的标记，有值说明来自核心词抓取
     if poi.get("_interest_group"):
-        return True
+        return True, "interest_group"
 
     # ---- 规则 3：软过滤 ----
-    hit_soft = any(kw in poi_type for kw in SOFT_EXCLUDE_TYPES)
+    # 命中软黑名单时，看名字里有没有豁免关键词
+    hit_soft = any(kw in poi_type for kw in rules.get("soft_exclude_types", []))
     if hit_soft:
-        # 看名字里有没有豁免关键词
-        if not any(kw in name for kw in SOFT_EXEMPT_KEYWORDS):
-            return False
-        # 有豁免关键词，放行
+        exempt = any(kw in name for kw in rules.get("soft_exempt_keywords", []))
+        if not exempt:
+            return False, "soft_exclude"
+        # 有豁免词，放行继续后面的检查
 
     # ---- 规则 4：品牌店格式 ----
-    if re.search(r"\(.*(店|分店|特许).*\)", name):
-        return False
+    # 如"黄鹤楼(香港路特许店)"，是商业复制品，不是真景点
+    pattern = rules.get("brand_store_pattern")
+    if pattern and re.search(pattern, name):
+        return False, "brand_store"
 
     # ---- 规则 5：子设施格式 ----
+    # 如"归元禅寺-大雄宝殿"，是主景点内部的子设施
+    # 判断方式：名字含 "-"，且后缀命中子设施后缀列表
     if "-" in name:
         suffix = name.split("-")[-1]
-        bad_suffix = [
-            "殿", "堂", "亭", "塔", "楼", "院", "阁", "池",
-            "林", "台", "宫", "像", "雕像", "铜像",
-        ]
-        if any(kw in suffix for kw in bad_suffix):
-            return False
+        bad_suffixes = rules.get("sub_facility_suffixes", [])
+        if any(kw in suffix for kw in bad_suffixes):
+            return False, "sub_facility"
 
     # ---- 规则 6：城市特有黑名单 ----
+    local_exclude = rules.get("local_exclude", [])
     if local_exclude:
         if any(kw in name for kw in local_exclude):
-            return False
+            return False, "local_exclude"
         if any(kw in poi_type for kw in local_exclude):
-            return False
+            return False, "local_exclude"
 
-    return True
+    return True, "passed"
 
 
+# ============================================================
+# 去重
+# ============================================================
 def dedupe(pois: list) -> list:
     """
     按 id 去重。
 
-    同一个景点可能被抓到多次，比如"黄鹤楼"：
-    - 被核心词"黄鹤楼"抓到，_interest_group = "历史人文"
-    - 被类别词"风景区"抓到，_interest_group = None
+    同一个景点可能被抓多次：
+    - 核心词"黄鹤楼"抓到 → _interest_group = "历史人文"
+    - 类别词"风景区"抓到 → _interest_group = None
 
     去重规则：优先保留有 _interest_group 的那条（核心词抓的更准）。
     """
@@ -152,40 +145,38 @@ def dedupe(pois: list) -> list:
         if pid not in best:
             best[pid] = poi
             continue
+
         old = best[pid]
         old_has = old.get("_interest_group") is not None
         new_has = poi.get("_interest_group") is not None
+
+        # 新条目有 interest_group 而旧的没有 → 用新的
         if new_has and not old_has:
             best[pid] = poi
+
     return list(best.values())
 
 
-def normalize_category(poi_type: str, interest_group: str = None) -> str:
+# ============================================================
+# 字段规范化
+# ============================================================
+def parse_rating(raw) -> float:
     """
-    把高德的 type 归一化成大类。
+    解析评分，返回 float。
 
-    优先级：
-    1. 如果 crawl 阶段打了 interest_group，直接用
-    2. 否则按 type 里的关键词匹配
-    3. 都不匹配，返回"其他"
+    - 正常数字 → float
+    - "暂无" / 空 / 非数字 → -1.0（明确表示"无评分"）
+
+    为什么用 -1.0 而不是 0.0：
+        0.0 会和"真的评 0 分"混淆，-1.0 明确表示"没有评分"。
+        排序时 -1.0 排在 0 分之后，符合"无评分靠后"的预期。
     """
-    if interest_group:
-        return interest_group
-
-    if "博物馆" in poi_type or "展览" in poi_type:
-        return "历史人文"
-    if "寺庙" in poi_type or "宗教" in poi_type or "教堂" in poi_type:
-        return "历史人文"
-    if "风景" in poi_type or "公园" in poi_type or "广场" in poi_type:
-        return "自然风光"
-    if "餐饮" in poi_type or "美食" in poi_type:
-        return "美食探店"
-    if "购物" in poi_type or "商业" in poi_type or "步行街" in poi_type:
-        return "购物休闲"
-    if "娱乐" in poi_type or "夜" in poi_type:
-        return "夜生活"
-
-    return "其他"
+    if raw is None:
+        return -1.0
+    try:
+        return float(raw)
+    except (ValueError, TypeError):
+        return -1.0
 
 
 def extract_photos(photos: list) -> list:
@@ -204,67 +195,72 @@ def extract_photos(photos: list) -> list:
     return urls
 
 
-# ============================================================
-# 单条 POI 清洗
-# ============================================================
 def clean_one(poi: dict) -> dict:
     """
     把一条高德原始 POI，转成 schema 规范的结构。
+
+    注意：
+        clean 阶段不产生 tag 阶段的字段（tags / behaviors / description /
+        is_attraction），这些由 tag 阶段填充。
+        clean 阶段只负责把 raw 数据规范化成 schema 里 clean 阶段应有的字段。
     """
     business = poi.get("business", {}) or {}
-    interest_group = poi.get("_interest_group")
 
     return {
+        # ---- 基础字段 ----
         "id": poi.get("id", ""),
         "name": poi.get("name", ""),
         "city": poi.get("_city", ""),
-        "district": poi.get("adname", "未知"),
+        "district": poi.get("adname", ""),
         "address": poi.get("address", ""),
         "location": poi.get("location", ""),
         "type": poi.get("type", ""),
-        "category": normalize_category(poi.get("type", ""), interest_group),
-        "rating": business.get("rating", "暂无") or "暂无",
-        "opentime": business.get("opentime_today", "暂无") or "暂无",
+
+        # ---- 业务字段 ----
+        "rating": parse_rating(business.get("rating")),
+        "opentime": business.get("opentime_today", "") or "",
         "poi_level": business.get("keytag", "") or "",
         "photos": extract_photos(poi.get("photos", [])),
-        # 以下三个字段由 tag 阶段填充
-        "tags": "",
-        "crowd": "",
-        "highlight": "",
-        # 系统字段
+
+        # ---- 系统字段 ----
         "source": "amap",
         "crawled_at": poi.get("_crawled_at", ""),
-        "interest_group": interest_group or "",
     }
 
 
 # ============================================================
-# 清洗一个城市
+# 清洗景点
 # ============================================================
 def clean_city(city_key: str, force: bool = False) -> None:
     """
-    清洗一个城市的所有 POI。
+    清洗一个城市的所有景点 POI。
 
     流程：
-    1. 读原始数据
-    2. 去重
-    3. 两层过滤
-    4. 单条清洗（字段映射）
-    5. 按评分排序 + 截断
-    6. 保存
+        1. 读原始数据
+        2. 去重
+        3. 过滤（走 is_valid_poi）
+        4. 单条清洗（字段映射）
+        5. 按 rating 降序排序，超过上限则截断
+        6. 保存
+
+    注意：
+        district 为空的 POI 直接丢弃——区县是空间排序的必要信息，
+        缺失会导致该 POI 无法正确参与行程规划。
     """
     logger.info("=" * 60)
-    logger.info(f"开始清洗城市：{city_key}")
+    logger.info(f"开始清洗景点：{city_key}")
     logger.info("=" * 60)
 
     in_path = raw_path(city_key)
     out_path = clean_path(city_key)
 
+    # ---- 检查输入 ----
     if not in_path.exists():
         logger.error(f"输入文件不存在：{in_path}")
-        logger.error(f"请先跑 crawl 阶段：python -m src.crawl.amap_crawler --city {city_key}")
+        logger.error(f"请先跑 crawl：python -m src.crawl.amap_crawler --city {city_key}")
         return
 
+    # ---- 检查输出 ----
     if out_path.exists() and not force:
         logger.info(f"输出文件已存在：{out_path}")
         logger.info("如需重新清洗，加 --force 参数")
@@ -272,12 +268,12 @@ def clean_city(city_key: str, force: bool = False) -> None:
 
     # ---- 读配置 ----
     cfg = get_city_config(city_key)
-    local_exclude = cfg.get("local_exclude", []) or []
-    max_pois = cfg.get("limits", {}).get("max_pois", 9999)
+    rules = get_clean_rules(city_key)
+    max_pois = cfg.get("limits", {}).get("max_pois", 400)
 
     # ---- 把核心词拍平成 set，用于豁免 ----
     core_spots_flat = set()
-    for interest, spots in cfg.get("core_spots", {}).items():
+    for spots in cfg.get("core_spots", {}).values():
         core_spots_flat.update(spots)
     logger.info(f"核心词总数：{len(core_spots_flat)}")
 
@@ -290,61 +286,54 @@ def clean_city(city_key: str, force: bool = False) -> None:
     deduped = dedupe(raw_pois)
     logger.info(f"去重后：{len(deduped)} 条（去掉 {len(raw_pois) - len(deduped)} 条重复）")
 
-    # ---- 两层过滤 ----
+    # ---- 过滤 ----
+    # 每个被干掉的 POI 记一次 reason，最后统计
     valid = []
-    filtered_hard = 0
-    filtered_soft = 0
-    filtered_other = 0
+    reason_counter = Counter()
 
     for p in deduped:
-        name = p.get("name", "")
-        poi_type = p.get("type", "")
-
-        # 统计过滤原因（用于日志）
-        if any(kw in name for kw in HARD_EXCLUDE_NAMES) or \
-           any(kw in poi_type for kw in HARD_EXCLUDE_TYPES):
-            filtered_hard += 1
-            continue
-        if p.get("_interest_group"):
-            valid.append(p)
-            continue
-        if any(kw in poi_type for kw in SOFT_EXCLUDE_TYPES):
-            if not any(kw in name for kw in SOFT_EXEMPT_KEYWORDS):
-                filtered_soft += 1
-                continue
-        # 其他规则：走完整 is_valid_poi 判断
-        if is_valid_poi(p, local_exclude, core_spots_flat):
+        keep, reason = is_valid_poi(p, rules, core_spots_flat)
+        if keep:
             valid.append(p)
         else:
-            filtered_other += 1
+            reason_counter[reason] += 1
 
     logger.info(f"过滤后：{len(valid)} 条")
-    logger.info(f"  - 硬过滤干掉：{filtered_hard} 条")
-    logger.info(f"  - 软过滤干掉：{filtered_soft} 条")
-    logger.info(f"  - 其他规则干掉：{filtered_other} 条")
+    for reason, cnt in reason_counter.most_common():
+        logger.info(f"  - {reason}: {cnt} 条")
 
     # ---- 单条清洗 ----
-    cleaned = [clean_one(p) for p in valid]
+    cleaned = []
+    dropped_no_district = 0
 
-    # ---- 按评分排序，超过上限就截断 ----
-    def rating_key(p):
-        r = p.get("rating", "暂无")
-        try:
-            return float(r)
-        except (ValueError, TypeError):
-            return 0.0
+    for p in valid:
+        item = clean_one(p)
+        # district 为空直接丢弃
+        if not item["district"]:
+            dropped_no_district += 1
+            continue
+        cleaned.append(item)
 
-    cleaned.sort(key=rating_key, reverse=True)
+    if dropped_no_district:
+        logger.info(f"丢弃 district 为空的：{dropped_no_district} 条")
+
+    # ---- 按 rating 降序排序，超过上限则截断 ----
+    # 注意：这里的排序只影响"超限时保留谁"，不影响检索和生成
+    cleaned.sort(key=lambda p: p["rating"], reverse=True)
 
     if len(cleaned) > max_pois:
-        logger.info(f"超过上限 {max_pois} 条，按评分截断")
+        logger.info(f"超过上限 {max_pois} 条，按 rating 降序截断")
         cleaned = cleaned[:max_pois]
 
-    # ---- 统计类别分布 ----
-    cat_counter = Counter(p["category"] for p in cleaned)
-    logger.info("类别分布：")
-    for cat, cnt in cat_counter.most_common():
-        logger.info(f"  {cat}: {cnt} 条")
+    # ---- 统计 type 分布（供参考）----
+    logger.info("类型分布（按 type 第一段粗看）：")
+    type_counter = Counter()
+    for p in cleaned:
+        t = p.get("type", "")
+        first = t.split(";")[0] if t else "未知"
+        type_counter[first] += 1
+    for t, cnt in type_counter.most_common(10):
+        logger.info(f"  {t}: {cnt} 条")
 
     # ---- 保存 ----
     out_path.parent.mkdir(parents=True, exist_ok=True)
@@ -353,9 +342,92 @@ def clean_city(city_key: str, force: bool = False) -> None:
 
     logger.info("")
     logger.info("=" * 60)
-    logger.info(f"清洗完成：{len(cleaned)} 条")
+    logger.info(f"景点清洗完成：{len(cleaned)} 条")
     logger.info(f"输出：{out_path}")
     logger.info("=" * 60)
+
+
+# ============================================================
+# 清洗锚点
+# ============================================================
+def clean_anchors(city_key: str, force: bool = False) -> None:
+    """
+    清洗一个城市的锚点数据。
+
+    锚点不需要过滤（它们本来就是交通枢纽/住宿区），
+    只需要把 location 字符串拆成 lat/lng 两个 float。
+
+    输入格式：
+        {"name": "武汉站", "location": "114.424338,30.606981", "type": "transport_hub"}
+    输出格式：
+        {"name": "武汉站", "lat": 30.606981, "lng": 114.424338, "type": "transport_hub"}
+
+    注意：高德的 location 是"经度,纬度"，转换时要对调顺序。
+    """
+    logger.info("")
+    logger.info("=" * 60)
+    logger.info(f"开始清洗锚点：{city_key}")
+    logger.info("=" * 60)
+
+    in_path = anchors_raw_path(city_key)
+    out_path = anchors_clean_path(city_key)
+
+    if not in_path.exists():
+        logger.error(f"锚点输入文件不存在：{in_path}")
+        return
+
+    if out_path.exists() and not force:
+        logger.info(f"输出文件已存在：{out_path}")
+        logger.info("如需重新清洗，加 --force 参数")
+        return
+
+    with open(in_path, "r", encoding="utf-8") as f:
+        raw_anchors = json.load(f)
+    logger.info(f"读入锚点：{len(raw_anchors)} 条")
+
+    cleaned = []
+    failed = []
+
+    for a in raw_anchors:
+        name = a.get("name", "")
+        location = a.get("location", "")
+
+        # 解析 "lng,lat" 字符串
+        try:
+            lng_str, lat_str = location.split(",")
+            lng = float(lng_str)
+            lat = float(lat_str)
+        except (ValueError, AttributeError):
+            logger.warning(f"  [{name}] 坐标解析失败：{location}")
+            failed.append(name)
+            continue
+
+        cleaned.append({
+            "name": name,
+            "lat": lat,
+            "lng": lng,
+            "type": a.get("type", ""),
+        })
+
+    if failed:
+        logger.warning(f"坐标解析失败 {len(failed)} 条：{failed}")
+
+    # ---- 保存 ----
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    with open(out_path, "w", encoding="utf-8") as f:
+        json.dump(cleaned, f, ensure_ascii=False, indent=2)
+
+    logger.info(f"锚点清洗完成：{len(cleaned)} 条")
+    logger.info(f"输出：{out_path}")
+
+
+# ============================================================
+# 主流程：清洗景点 + 锚点
+# ============================================================
+def clean_all(city_key: str, force: bool = False) -> None:
+    """清洗一个城市的景点和锚点"""
+    clean_city(city_key, force=force)
+    clean_anchors(city_key, force=force)
 
 
 # ============================================================
@@ -375,7 +447,7 @@ def main():
     )
     args = parser.parse_args()
 
-    clean_city(args.city, force=args.force)
+    clean_all(args.city, force=args.force)
 
 
 if __name__ == "__main__":
