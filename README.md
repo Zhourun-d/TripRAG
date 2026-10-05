@@ -86,13 +86,45 @@
 
 ---
 
+## 目录结构
+
+```
+smart-travel/
+├── config/
+│   ├── cities/{wuhan,chongqing,nanjing}.yaml   # 城市配置
+│   └── schema.yaml                             # POI 字段规范 + 词表 + text 模板
+├── data/
+│   ├── raw/                                    # 高德原始数据
+│   ├── processed/                              # 清洗 / 打标后数据
+│   ├── knowledge_base/                         # 知识库 jsonl + BM25 索引
+│   └── eval/                                   # 评估集与报告
+├── chroma_db/{city}_v1/                        # 向量库
+├── src/
+│   ├── config.py                               # 配置加载 / 路径管理
+│   ├── logger.py
+│   ├── crawl/amap_crawler.py                   # 抓取
+│   ├── clean/poi_cleaner.py                    # 清洗（两层过滤）
+│   ├── tag/poi_tagger.py                       # 大模型打标
+│   ├── build/kb_builder.py                     # 归组 + 向量化 + BM25
+│   ├── retrieve/retriever.py                   # 向量 + BM25 + RRF
+│   ├── retrieve/anchors.py                     # 锚点读取
+│   ├── plan/spatial_sorter.py                  # 地理分天
+│   ├── plan/poi_picker.py                      # 片内选点
+│   ├── plan/itinerary_generator.py             # 生成（每天一次大模型）
+│   └── plan/map_view.py                        # 地图可视化
+├── app.py                                      # Streamlit 前端
+└── requirements.txt
+```
+
+---
+
 ## 整体架构
 
 ```
-┌────────────────────────── 离线：数据流水线 ──────────────────────────┐
+┌────────────────────────── 离线：数据流水线 ─────────────────────────┐
 │                                                                     │
-│  高德 API ──▶ crawl ──▶ clean ──▶ tag ──▶ build ──▶ eval            │
-│             抓 POI    两层过滤   大模型打标  归组+向量化  检索评估        │
+│  高德 API ──▶ crawl ──▶ clean ──▶ tag ──▶ build ──▶ eval        │
+│             抓 POI    两层过滤   大模型打标  归组+向量化  检索评估   │
 │                                                  │                  │
 │                                      data/knowledge_base/           │
 │                                      chroma_db/{city}_v1/           │
@@ -100,13 +132,13 @@
                                                    │
 ┌────────────────────────── 在线：一次生成 ─────────┼──────────────────┐
 │                                                   ▼                 │
-│  用户表单 ──▶ 召回（向量+BM25+RRF）──▶ 地理分天 ──▶ 按风格选点          │
+│  用户表单 ──▶ 召回（向量+BM25+RRF）──▶ 地理分天 ──▶ 按风格选点     │
 │                                                   │                 │
 │                                                   ▼                 │
-│                              每天一次大模型（只写文案，不得增删景点）      │
+│                              每天一次大模型（只写文案，不得增删景点）│
 │                                                   │                 │
 │                                                   ▼                 │
-│                          前端：地图（色块+编号）+ 每天卡片 + 景点图片      │
+│                          前端：地图（色块+编号）+ 每天卡片 + 景点图片│
 └─────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -530,38 +562,6 @@ python -m src.plan.poi_picker --city wuhan --days 3 --plan_type 口碑 --interes
 
 # 生成（命令行）
 python -m src.plan.itinerary_generator --style 口碑 --days 2 --interests 历史人文 --stay_district 武昌区
-```
-
----
-
-## 目录结构
-
-```
-smart-travel/
-├── config/
-│   ├── cities/{wuhan,chongqing,nanjing}.yaml   # 城市配置
-│   └── schema.yaml                             # POI 字段规范 + 词表 + text 模板
-├── data/
-│   ├── raw/                                    # 高德原始数据
-│   ├── processed/                              # 清洗 / 打标后数据
-│   ├── knowledge_base/                         # 知识库 jsonl + BM25 索引
-│   └── eval/                                   # 评估集与报告
-├── chroma_db/{city}_v1/                        # 向量库
-├── src/
-│   ├── config.py                               # 配置加载 / 路径管理
-│   ├── logger.py
-│   ├── crawl/amap_crawler.py                   # 抓取
-│   ├── clean/poi_cleaner.py                    # 清洗（两层过滤）
-│   ├── tag/poi_tagger.py                       # 大模型打标
-│   ├── build/kb_builder.py                     # 归组 + 向量化 + BM25
-│   ├── retrieve/retriever.py                   # 向量 + BM25 + RRF
-│   ├── retrieve/anchors.py                     # 锚点读取
-│   ├── plan/spatial_sorter.py                  # 地理分天
-│   ├── plan/poi_picker.py                      # 片内选点
-│   ├── plan/itinerary_generator.py             # 生成（每天一次大模型）
-│   └── plan/map_view.py                        # 地图可视化
-├── app.py                                      # Streamlit 前端
-└── requirements.txt
 ```
 
 ---
